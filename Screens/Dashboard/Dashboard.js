@@ -1,5 +1,6 @@
 import moment from "moment";
 import React, { useState, useEffect, useRef } from "react";
+import { Pressable } from "react-native";
 import { ImageBackground, View, ScrollView, FlatList, Image, Alert } from "react-native";
 import {
   Button,
@@ -12,13 +13,12 @@ import {
   Surface,
   Portal,
   List,
+  Divider,
 } from "react-native-paper";
 import Swiper from "react-native-swiper";
 import HTML from "react-native-render-html";
 import * as ScreenOrientation from 'expo-screen-orientation';
-
 import * as Animatable from "react-native-animatable";
-
 import CustomModal from "../../Components/CustomModal";
 import DropDown from "../../Components/DropDown";
 import Header from "../../Components/Header";
@@ -26,10 +26,98 @@ import ImageUpload from "../../Components/ImageUpload";
 import { postRequest, uploadImage } from "../../Services/RequestServices";
 import MyStyles from "../../Styles/MyStyles";
 import DatePicker from "../../Components/DatePicker";
+import RedeemModal from "./RedeemModal";
+// import ImagePicker from 'react-native-image-crop-picker';
+import * as ImagePicker from 'expo-image-picker';
+
+import UploadModal from "./UploadModal";
+import { serviceUrl, imageUrl } from "../../Services/Constants";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import InterestYes from "./InterestYes";
+import InterestFollowUp from "./InterestFollowUp";
+import InterestRequirement from "./InterestRequirement";
+
 
 const Dashboard = (props) => {
   const { branchId, branchName, logoPath, token } = props.loginDetails;
   const imageRef = useRef(null);
+  // const [category, setCategory] = useState({
+  //   scooter: false,
+  //   motorcycle: true,
+  // });
+  const CATEGORY_IDS = {
+    scooter: '2180',
+    motorcycle: '2181',
+    bike: '2182',
+  };
+  
+  const [category, setCategory] = useState({
+    scooter: false,
+    motorcycle: false,
+    bike: false,
+  });
+  
+  const [payloadData, setPayloadData] = useState([]);
+  
+  const categoryImage = {
+    scooter: "https://api.quicktagg.com/CustomerUploads/image-3c8744d8-9bd3-493a-bfb4-8c72cd086b18.png",
+    motorcycle: "https://api.quicktagg.com/CustomerUploads/image-4301b3d1-b65e-483d-a1c2-470f005e9a7c.jpg",
+    bike: "https://api.quicktagg.com/CustomerUploads/image-4301b3d1-b65e-483d-a1c2-470f005e9a7c.jpg",
+  };
+  const toggleCategory = (type) => {
+    const isSelected = !category[type];
+    const categoryId = CATEGORY_IDS[type];
+  
+    setCategory(prev => ({
+      ...prev,
+      [type]: isSelected,
+    }));
+  
+    setPayloadData(prev => {
+      const updated = [...prev];
+  
+      if (isSelected) {
+        // Add a new payload for the selected category
+        const newPayload = {
+          tran_id: 0,
+          customer_id: upload?.customer_id || 0,
+          mobile: upload?.mobile || '',
+          full_name: upload?.full_name || '',
+          remarks: upload?.remarks || '',
+          sku: upload?.sku || '',
+          image_path: {"choose":"", "add":[], "fetchSku":"", "url":categoryImage[type]},
+          appointment_date: upload?.appointment_date || '',
+          payment: upload?.payment || '',
+          sub_category: upload?.sub_category || '',
+          interest: upload?.interest || 'Yes',
+          staff_id: upload?.staff_id || '1069',
+          category_id: categoryId? categoryId : '',
+        };
+  
+        return [...updated, newPayload];
+      } else {
+        // OPTIONAL: Remove payloads for this category
+        return updated.filter(item => item.category_id !== categoryId);
+      }
+    });
+  };
+  useEffect(() => {
+    console.log("Updated payloadData:", payloadData);
+  }, [payloadData]);
+
+  useEffect(() => {
+    console.log("Updated interest:", interest);
+  }, [interest]);
+  
+  
+  
+  const options = [
+    { label: 'YES', value: 'yes' },
+    { label: 'FOLLOW UP', value: 'followup' },
+    { label: 'REQUIREMENT', value: 'requirement' },
+  ];
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [interest, setInterest] = useState('yes');
   const [details, setDetails] = useState(null);
   const [history, setHistory] = useState([]);
   const [tabs, setTabs] = useState(1);
@@ -39,7 +127,83 @@ const Dashboard = (props) => {
   const [notifications, setNotifications] = useState([]);
   const [redeem, setRedeem] = useState(null);
   const [checkIn, setCheckIn] = useState(null);
+  const [voucherList, setVoucherList] = useState(null);
   const [upload, setUpload] = useState(null);
+  const [points, setPoints] = useState(null);
+  const [customerId, setCustomerId] = useState(null);
+  const [redeemPoints, setRedeemPoints] = useState(null);
+  const [expiredPoints, setExpiredPoints] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+
+  
+    const [image, setImage] = useState([]);
+  
+    const pickImage = async () => {
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          aspect: [4, 3],
+          quality: 1,
+        });
+    
+        if (result.cancelled) {
+          throw new Error('Image selection cancelled');
+        }
+        
+        // For Expo Image Picker v2+
+        const asset = result.uri;
+        return {
+          uri: asset,
+          type: 'image/jpeg',
+          name: 'photo.jpg'
+        };
+      } catch (error) {
+        console.error('ImagePicker Error: ', error);
+        throw error;
+      }
+    };
+    
+  
+    
+    const handleUpload = async () => {
+      if (!image || image.length === 0) {
+        alert("Please select at least one image first.");
+        return;
+      }
+    
+      const formData = new FormData();
+    
+      image.forEach((uri, index) => {
+        formData.append("images", {
+          uri,
+          type: "image/jpeg",
+          name: `upload_${index}.jpg`,
+        });
+      });
+    
+      try {
+        const response = await uploadImage("/upload", formData, token); // use actual route
+        console.log("Upload response", response);
+      } catch (error) {
+        console.error("Upload failed", error);
+      }
+    };
+    
+  
+
+
+  const subCategoryData =
+    category === "SCOOTER"
+      ? [
+        { label: "JUPITER", value: "JUPITER" },
+        { label: "PEP", value: "PEP" },
+      ]
+      : [
+        { label: "APACHE", value: "APACHE" },
+        { label: "SPORTS", value: "SPORTS" },
+      ];
+ 
+
   const [join, setJoin] = useState({
     customer_id: "0",
     branch_id: branchId,
@@ -68,6 +232,7 @@ const Dashboard = (props) => {
     join: false,
     checkIn: false,
     upload: false,
+    uploadNext: false,
     notification: false,
     area: false,
   });
@@ -77,37 +242,61 @@ const Dashboard = (props) => {
   const [recentVistors, setRecentVistors] = useState([]);
   const [bannerImages, setBannerImages] = useState([]);
   const [imageUri, setImageUri] = useState(
-    "https://jewellerapi.quickgst.in/tabBanner/image-d7e532c1-6f79-4f06-ae1d-9afd4567940f.jpg"
+    "https://api.quicktagg.com/tabBanner/image-d7e532c1-6f79-4f06-ae1d-9afd4567940f.jpg"
   );
 
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     imageSwitch();
     postRequest("masters/customer/tabtoscanBannerBrowse", {}, token).then((res) => {
-      console.log(res);
+      if (!res || typeof res !== 'object' || res.status === undefined) {
+        console.error("Invalid API response for tabtoscanBannerBrowse", res);
+        // Optionally: setBannerImages([]); setImageUri(null);
+        return;
+      }
       if (res.status == 200) {
-        const data = res.data.map((item) => {
-          return item.url + item.image_path;
-        });
+        const data = res.data.map((item) => item.url + item.image_path);
         setBannerImages(data);
-        
         setImageUri(data[0]);
       }
+    }).catch((err) => {
+      console.error("API error (tabtoscanBannerBrowse):", err);
     });
     postRequest("customervisit/StaffList", {}, token).then((resp) => {
+      if (!resp || typeof resp !== 'object' || resp.status === undefined) {
+        console.error("Invalid API response for StaffList", resp);
+        return;
+      }
       if (resp.status == 200) {
+        console.log("StaffList", resp.data);
         setStaffList(resp.data);
       }
+    }).catch((err) => {
+      console.error("API error (StaffList):", err);
     });
     postRequest("customervisit/CategoryList", {}, token).then((resp) => {
-      if (resp.status == 200) {
-        setCategoryList(resp.data);
+      if (!resp || typeof resp !== 'object' || resp.status === undefined) {
+        console.error("Invalid API response for CategoryList", resp);
+        return;
       }
+      if (resp.status == 200) {
+        console.log("CategoryList", resp.data);
+
+
+      }
+    }).catch((err) => {
+      console.error("API error (CategoryList):", err);
     });
     postRequest("customervisit/AreaList", {}, token).then((resp) => {
+      if (!resp || typeof resp !== 'object' || resp.status === undefined) {
+        console.error("Invalid API response for AreaList", resp);
+        return;
+      }
       if (resp.status == 200) {
         setAreaList(resp.data);
       }
+    }).catch((err) => {
+      console.error("API error (AreaList):", err);
     });
   }, []);
 
@@ -116,10 +305,9 @@ const Dashboard = (props) => {
     if (index >= bannerImages.length - 1) {
       index = -1;
     }
-    // console.log(index);
     setImageUri(bannerImages[index + 1]);
     if (imageRef) {
-      imageRef.current.animate({ 0: { opacity: 0 }, 1: { opacity: 1 } });
+      imageRef?.current?.animate({ 0: { opacity: 0 }, 1: { opacity: 1 } });
     }
   };
 
@@ -132,13 +320,23 @@ const Dashboard = (props) => {
     };
   }, [imageUri]);
 
+  useEffect(() => {
+    console.log("Modal", modal);
+  }, [modal]);
+  
   // --UseEffect For Recent Visits--
 
   useEffect(() => {
     postRequest("customervisit/getRecentvisiters", {}, token).then((resp) => {
+      if (!resp || typeof resp !== 'object' || resp.status === undefined) {
+        console.error("Invalid API response for getRecentvisiters", resp);
+        return;
+      }
       if (resp.status == 200) {
         setRecentVistors(resp.data);
       }
+    }).catch((err) => {
+      console.error("API error (getRecentvisiters):", err);
     });
   }, [details, redeem, checkIn, upload, join]);
 
@@ -177,7 +375,6 @@ const Dashboard = (props) => {
             size={23}
             onPress={() => {
               postRequest("customervisit/getNotification", {}, token).then((resp) => {
-                console.log(resp);
                 if (resp.status == 200) {
                   setNotifications(resp.data);
                   setModal({ ...modal, notification: true });
@@ -380,7 +577,7 @@ const Dashboard = (props) => {
                     name="phone"
                   />
                 }
-                //  left={<TextInput.Affix text="+91-" />}
+              //  left={<TextInput.Affix text="+91-" />}
               />
               {recentVistors.map((item, index) => (
                 <List.Item
@@ -415,8 +612,8 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
-                        setDetails(resp.data);
+                      if (resp?.status == 200) {
+                        setDetails(resp?.data);
                       }
                     });
                   }}
@@ -443,6 +640,7 @@ const Dashboard = (props) => {
                       <Text style={MyStyles.text}>{moment(details?.dob).format("DD/MM/YYYY")}</Text>
                     </View>
                   </View>
+                  <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
                       <Text>Date of Aniversary</Text>
@@ -459,6 +657,7 @@ const Dashboard = (props) => {
                       <Text style={MyStyles.text}>{details?.address}</Text>
                     </View>
                   </View>
+                  <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
                       <Text>Branch Name</Text>
@@ -477,6 +676,7 @@ const Dashboard = (props) => {
                       </Text>
                     </View>
                   </View>
+                  <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
                       <Text>Category Name</Text>
@@ -523,8 +723,8 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
-                        setHistory(resp.data);
+                      if (resp?.status == 200) {
+                        setHistory(resp?.data);
                         setModal({ ...modal, details: false, history: true });
                       }
                     });
@@ -546,8 +746,8 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
-                        setDesign(resp.data);
+                      if (resp?.status == 200) {
+                        setDesign(resp?.data);
                         setModal({ ...modal, details: false, design: true });
                       }
                     });
@@ -558,8 +758,8 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
-                        setWishlist(resp.data);
+                      if (resp?.status == 200) {
+                        setWishlist(resp?.data);
                       }
                     });
                     postRequest(
@@ -569,8 +769,8 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
-                        setExhibition(resp.data);
+                      if (resp?.status == 200) {
+                        setExhibition(resp?.data);
                       }
                     });
                   }}
@@ -681,6 +881,7 @@ const Dashboard = (props) => {
                 {
                   justifyContent: "flex-start",
                   paddingTop: 5,
+                  marginBottom: 5,
                 },
               ]}
             >
@@ -691,7 +892,6 @@ const Dashboard = (props) => {
                 color={tabs === 1 ? "blue" : "#AAA"}
                 style={{
                   borderWidth: 1,
-                  borderBottomWidth: 0,
                   marginHorizontal: 5,
                 }}
                 onPress={() => setTabs(1)}
@@ -705,7 +905,6 @@ const Dashboard = (props) => {
                 color={tabs === 2 ? "blue" : "#AAA"}
                 style={{
                   borderWidth: 1,
-                  borderBottomWidth: 0,
                   marginHorizontal: 5,
                 }}
                 onPress={() => setTabs(2)}
@@ -719,7 +918,6 @@ const Dashboard = (props) => {
                 color={tabs === 3 ? "blue" : "#AAA"}
                 style={{
                   borderWidth: 1,
-                  borderBottomWidth: 0,
                   marginHorizontal: 5,
                 }}
                 onPress={() => setTabs(3)}
@@ -731,8 +929,8 @@ const Dashboard = (props) => {
             {/*------------ My Design Tab ------------------- */}
 
             {tabs === 1 && (
-               
-              <Swiper  showsButtons showsPagination={false}>
+
+              <Swiper showsButtons showsPagination={false}>
                 {design.map((item, index) => {
                   return (
                     <View style={[MyStyles.row, { flex: 1 }]} key={index}>
@@ -748,32 +946,32 @@ const Dashboard = (props) => {
                         ]}
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
-                      <ScrollView>
-                        <View style={MyStyles.wrapper}>
-                          <Text>SKU</Text>
-                          <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Remarks</Text>
-                          <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Staff</Text>
-                          <Text style={MyStyles.text}>
-                            {item.staff_name ? item.staff_name : "N/A"}
-                          </Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Date</Text>
-                          <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
-                        </View>
-                    </ScrollView>
+                        <ScrollView>
+                          <View style={MyStyles.wrapper}>
+                            <Text>SKU</Text>
+                            <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Remarks</Text>
+                            <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Staff</Text>
+                            <Text style={MyStyles.text}>
+                              {item.staff_name ? item.staff_name : "N/A"}
+                            </Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Date</Text>
+                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
+                          </View>
+                        </ScrollView>
                       </View>
                     </View>
                   );
                 })}
               </Swiper>
-              
+
             )}
 
             {/*------------ Wishlist Tab ------------------- */}
@@ -795,25 +993,25 @@ const Dashboard = (props) => {
                         ]}
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
-                      <ScrollView>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Product Name</Text>
-                          <Text style={MyStyles.text}>
-                            {item.product_name ? item.product_name : "N/A"}
-                          </Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>SKU</Text>
-                          <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Remarks</Text>
-                          <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Date</Text>
-                          <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
-                        </View>
+                        <ScrollView>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Product Name</Text>
+                            <Text style={MyStyles.text}>
+                              {item.product_name ? item.product_name : "N/A"}
+                            </Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>SKU</Text>
+                            <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Remarks</Text>
+                            <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Date</Text>
+                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
+                          </View>
                         </ScrollView>
                       </View>
                     </View>
@@ -841,25 +1039,25 @@ const Dashboard = (props) => {
                         ]}
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
-                      <ScrollView>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Product Name</Text>
-                          <Text style={MyStyles.text}>
-                            {item.product_name ? item.product_name : "N/A"}
-                          </Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>SKU</Text>
-                          <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Remarks</Text>
-                          <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
-                        </View>
-                        <View style={MyStyles.wrapper}>
-                          <Text>Date</Text>
-                          <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
-                        </View>
+                        <ScrollView>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Product Name</Text>
+                            <Text style={MyStyles.text}>
+                              {item.product_name ? item.product_name : "N/A"}
+                            </Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>SKU</Text>
+                            <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Remarks</Text>
+                            <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
+                          </View>
+                          <View style={MyStyles.wrapper}>
+                            <Text>Date</Text>
+                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
+                          </View>
                         </ScrollView>
                       </View>
                     </View>
@@ -925,14 +1123,14 @@ const Dashboard = (props) => {
                     name="phone"
                   />
                 }
-                //  left={<TextInput.Affix text="+91-" />}
+              //  left={<TextInput.Affix text="+91-" />}
               />
               {recentVistors.map((item, index) => (
                 <List.Item
                   onPress={() => {
                     setModal({ ...modal, mobile: item.mobile });
                   }}
-                  
+
                   key={index}
                   title={"+91 " + item.mobile}
                   left={(props) => <List.Icon {...props} icon="history" />}
@@ -956,158 +1154,82 @@ const Dashboard = (props) => {
                   onPress={() => {
                     postRequest(
                       "customervisit/getCustomerVisit",
-                      {
-                        mobile: modal.mobile,
-                      },
+                      { mobile: modal.mobile },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
+                      if (resp?.status === 200) {
+                        const customerData = resp.data;
+                        setVoucherList(customerData);
+                        setCustomerId(customerData[0].customer_id);
+
+                        // 1️⃣ Fetch customer points
                         postRequest(
-                          "customervisit/getCustomerVoucherList",
+                          "customervisit/getCustomerPointList",
                           {
-                            customer_id: resp.data[0].customer_id,
+                            customer_id: customerData[0].customer_id,
                             branch_id: branchId,
                           },
                           token
-                        ).then((resp) => {
-                          if (resp.status == 200) {
-                            console.log(resp.data)
-                            setRedeem(resp.data);
+                        ).then((pointResp) => {
+                          if (pointResp?.status === 200) {
+                            setPoints(pointResp.data);
+
+                            // 2️⃣ Fetch expired points
+                            postRequest(
+                              "customervisit/getCustomerExpirePointList",
+                              {
+                                customer_id: customerData[0].customer_id,
+                                branch_id: branchId,
+                              },
+                              token
+                            ).then((expirePointResp) => {
+                              if (expirePointResp?.status === 200) {
+                                setExpiredPoints?.(expirePointResp.data);
+
+                                // 3️⃣ Fetch customer redeem points
+                                postRequest(
+                                  "customervisit/getCustomerRedeemPointList",
+                                  {
+                                    customer_id: customerData[0].customer_id,
+                                    branch_id: branchId,
+                                  },
+                                  token
+                                ).then((redeemPointResp) => {
+                                  if (redeemPointResp?.status === 200) {
+                                    setRedeemPoints(redeemPointResp.data);
+
+                                    // 4️⃣ Fetch customer vouchers
+                                    postRequest(
+                                      "customervisit/getCustomerVoucherList",
+                                      {
+                                        customer_id: customerData[0].customer_id,
+                                        branch_id: branchId,
+                                      },
+                                      token
+                                    ).then((voucherResp) => {
+                                      if (voucherResp?.status === 200) {
+                                        setRedeem(voucherResp.data);
+                                        setModal({ ...modal, redeem: true });
+                                      }
+                                    });
+                                  }
+                                });
+                              }
+                            });
                           }
                         });
                       }
                     });
                   }}
+
+
                 >
                   Continue
                 </Button>
               </View>
             </View>
           ) : (
-            <View>
-              <DataTable style={{ height: "100%" }}>
-                <DataTable.Header>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Voucher
-                  </DataTable.Title>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Details
-                  </DataTable.Title>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Offer
-                  </DataTable.Title>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Issue Date
-                  </DataTable.Title>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Expiry Date
-                  </DataTable.Title>
-                  <DataTable.Title
-                    style={{ flex: 1, justifyContent: "center" }}
-                    theme={{ colors: { text: "#0818A8" } }}
-                  >
-                    Action
-                  </DataTable.Title>
-                </DataTable.Header>
-                <FlatList
-                  data={redeem}
-                  renderItem={({ item, index }) => (
-                    <DataTable.Row>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        {item.voucher_name}
-                      </DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        {item.details}
-                      </DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        {item.amount}
-                      </DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        {moment(item.redeem_start_date).format("DD/MM/YYYY")}
-                      </DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        {moment(item.redeem_end_date).format("DD/MM/YYYY")}
-                      </DataTable.Cell>
-                      <DataTable.Cell style={{ flex: 1, justifyContent: "center" }}>
-                        <Button
-                          mode="contained"
-                          compact
-                          uppercase={false}
-                          color="#ffba3c"
-                          onPress={() => {
-                            Alert.alert(
-                              "Are You Sure ?",
-                              "You Want to Redeem this Voucher !",
-                              [
-                                {
-                                  text: "No",
-
-                                  style: "cancel",
-                                },
-                                {
-                                  text: "Yes",
-                                  onPress: () => {
-                                    postRequest(
-                                      "customervisit/insertVoucherRedeem",
-                                      {
-                                        tran_id: "0",
-                                        customer_id: item.customer_id,
-                                        voucher_id: item.voucher_id,
-                                      },
-                                      token
-                                    ).then((resp) => {
-                                      if (resp.status == 200) {
-                                        Alert.alert("Success", "Voucher Redeemed..!");
-                                        setModal({ ...modal, redeem: false });
-                                        setRedeem(null);
-                                      }
-                                    });
-                                  },
-                                },
-                              ],
-                              { cancelable: false }
-                            );
-                          }}
-                        >
-                          Redeem
-                        </Button>
-                      </DataTable.Cell>
-                    </DataTable.Row>
-                  )}
-                  keyExtractor={(item, index) => index.toString()}
-                />
-                <View style={[MyStyles.row, { marginTop: 10, justifyContent: "flex-end" }]}>
-                  <Button
-                    style={{ marginRight: "auto" }}
-                    mode="contained"
-                    color="#DC143C"
-                    uppercase={false}
-                    compact
-                    onPress={() => {
-                      setModal({ ...modal, redeem: false });
-                      setRedeem(null);
-                    }}
-                  >
-                    Close
-                  </Button>
-                </View>
-              </DataTable>
-            </View>
+            <RedeemModal visible={modal.redeem} onClose={() => { setModal({ ...modal, redeem: false }); setRedeem(null); setPoints(null); }} points={points} redeem={redeem} expiredPoints={expiredPoints} redeemPoints={redeemPoints} voucherList={voucherList} token={token} staffList={staffList} />
           )
         }
       />
@@ -1235,8 +1357,7 @@ const Dashboard = (props) => {
                           },
                           token
                         ).then((resp) => {
-                          if (resp.status == 200) {
-                            console.log(resp.data[0].customer_id);
+                          if (resp?.status == 200) {
                             setJoin({
                               ...join,
                               ref_id: resp.data[0].customer_id,
@@ -1333,8 +1454,7 @@ const Dashboard = (props) => {
                   onPress={() => {
                     postRequest("customervisit/insertNewCustomerVisit", join, token).then(
                       (resp) => {
-                        console.log(resp);
-                        if (resp.status == 200) {
+                        if (resp?.status == 200) {
                           setModal({ ...modal, join: false });
                           setJoin({});
                         }
@@ -1390,10 +1510,10 @@ const Dashboard = (props) => {
                     },
                     token
                   ).then((resp) => {
-                    if (resp.status == 200) {
+                    if (resp?.status == 200) {
                       setModal({ ...modal, area: false });
                       postRequest("customervisit/AreaList", {}, token).then((resp) => {
-                        if (resp.status == 200) {
+                        if (resp?.status == 200) {
                           setAreaList(resp.data);
                         }
                       });
@@ -1433,7 +1553,7 @@ const Dashboard = (props) => {
                     name="phone"
                   />
                 }
-                //  left={<TextInput.Affix text="+91-" />}
+              //  left={<TextInput.Affix text="+91-" />}
               />
               {recentVistors.map((item, index) => (
                 <List.Item
@@ -1468,8 +1588,7 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      //console.log(resp);
-                      if (resp.status == 200) {
+                      if (resp?.status == 200) {
                         postRequest(
                           "customervisit/insertCustomerVisit",
                           {
@@ -1478,7 +1597,7 @@ const Dashboard = (props) => {
                           },
                           token
                         ).then((resp) => {
-                          if (resp.status == 200) {
+                          if (resp?.status == 200) {
                             setCheckIn(resp.data[0]);
                             setTimeout(() => {
                               setModal({ ...modal, checkIn: false });
@@ -1487,7 +1606,7 @@ const Dashboard = (props) => {
                           }
                         });
                       }
-                      if (resp.status == 500) {
+                      if (resp?.status == 500) {
                         setJoin({ ...join, mobile: modal.mobile });
                         setModal({ ...modal, join: true, checkIn: false });
                       }
@@ -1525,56 +1644,56 @@ const Dashboard = (props) => {
                 </Text>
               </View>
               <View style={[MyStyles.row,
-            {
-              justifyContent: "space-between",
-              margin: 0,
-              paddingHorizontal: 40,
-            },]}>
-                 <Card
-            style={[MyStyles.primaryColor, { width: "60%", borderRadius: 10 }]}
-            onPress={() => setModal({ ...modal, checkIn: true })}
-          >
-            <ImageBackground
-              style={{}}
-              imageStyle={{ borderRadius: 10, opacity: 0.5 }}
-              source={require("../../assets/pattern.jpg")}
-            >
-              {/* <Card.Title
+              {
+                justifyContent: "space-between",
+                margin: 0,
+                paddingHorizontal: 40,
+              },]}>
+                <Card
+                  style={[MyStyles.primaryColor, { width: "60%", borderRadius: 10 }]}
+                  onPress={() => setModal({ ...modal, checkIn: true })}
+                >
+                  <ImageBackground
+                    style={{}}
+                    imageStyle={{ borderRadius: 10, opacity: 0.5 }}
+                    source={require("../../assets/pattern.jpg")}
+                  >
+                    {/* <Card.Title
                 title={`Join ${branchName} Now`}
                 subtitle="Accounts are free"
                 right={() => <IconButton icon="chevron-right" size={30} />}
               /> */}
-              <View style={{ paddingVertical: 15 }}>
-                <Text
-                  style={{ fontSize: 22, textAlign: "center" }}
-                  numberOfLines={1}
-                >{checkIn.customer_name}</Text>
-              </View>
-            </ImageBackground>
-          </Card>
-          <Card
-            style={[MyStyles.secondaryColor, { width: "35%", borderRadius: 10 }]}
-            onPress={() => setModal({ ...modal, checkIn: true })}
-          >
-            <ImageBackground
-              style={{}}
-              imageStyle={{ borderRadius: 10, opacity: 0.5 }}
-              source={require("../../assets/pattern.jpg")}
-            >
-              {/* <Card.Title
+                    <View style={{ paddingVertical: 15 }}>
+                      <Text
+                        style={{ fontSize: 22, textAlign: "center" }}
+                        numberOfLines={1}
+                      >{checkIn.customer_name}</Text>
+                    </View>
+                  </ImageBackground>
+                </Card>
+                <Card
+                  style={[MyStyles.secondaryColor, { width: "35%", borderRadius: 10 }]}
+                  onPress={() => setModal({ ...modal, checkIn: true })}
+                >
+                  <ImageBackground
+                    style={{}}
+                    imageStyle={{ borderRadius: 10, opacity: 0.5 }}
+                    source={require("../../assets/pattern.jpg")}
+                  >
+                    {/* <Card.Title
                 title="Check In"
                 subtitle="for Rewards"
                 right={() => <IconButton icon="chevron-right" size={30} />}
               /> */}
-               
-              <View style={{ paddingVertical: 15 }}>
-                <Text style={{ fontSize: 22, textAlign: "center" }} numberOfLines={1}>
-                {checkIn.total_visit}
-                </Text>
-                
-              </View>
-            </ImageBackground>
-          </Card>
+
+                    <View style={{ paddingVertical: 15 }}>
+                      <Text style={{ fontSize: 22, textAlign: "center" }} numberOfLines={1}>
+                        {checkIn.total_visit}
+                      </Text>
+
+                    </View>
+                  </ImageBackground>
+                </Card>
                 {/* <Card style={[MyStyles.primaryColor, { width: "60%", borderRadius: 10 }]}>
                   <ImageBackground
                     style={{ flex: 1 }}
@@ -1638,7 +1757,7 @@ const Dashboard = (props) => {
                     name="phone"
                   />
                 }
-                //  left={<TextInput.Affix text="+91-" />}
+              //  left={<TextInput.Affix text="+91-" />}
               />
               {recentVistors.map((item, index) => (
                 <List.Item
@@ -1673,7 +1792,7 @@ const Dashboard = (props) => {
                       },
                       token
                     ).then((resp) => {
-                      if (resp.status == 200) {
+                      if (resp?.status == 200) {
                         setUpload({
                           tran_id: "0",
                           branch_id: branchId,
@@ -1698,73 +1817,95 @@ const Dashboard = (props) => {
           ) : (
             <View style={{ height: "100%" }}>
               <ScrollView>
-                <View style={MyStyles.row}>
+                <View style={[MyStyles.row, { fontSize: 12 }]}>
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <TextInput
-                      mode="flat"
-                      style={{ backgroundColor: "rgba(0,0,0,0)" }}
-                      label="Name"
-                      value={upload?.full_name}
-                      disabled
-                    />
-                    <TextInput
-                      mode="flat"
-                      style={{ backgroundColor: "rgba(0,0,0,0)" }}
-                      label="Mobile No."
-                      value={upload?.mobile}
-                      disabled
-                    />
-                    <TextInput
-                      mode="flat"
-                      style={{ backgroundColor: "rgba(0,0,0,0)" }}
-                      label="Remarks"
-                      value={upload?.remarks}
-                      onChangeText={(text) => setUpload({ ...upload, remarks: text })}
-                    />
-                    <DropDown
-                      value={upload?.staff_id}
-                      ext_lbl="name"
-                      ext_val="staff_id"
-                      data={staffList}
-                      placeholder="Staff"
-                      onChange={(val) => setUpload({ ...upload, staff_id: val })}
-                    />
-                    <TextInput
-                      mode="flat"
-                      style={{ backgroundColor: "rgba(0,0,0,0)" }}
-                      label="Sku"
-                      value={upload?.sku}
-                      onChangeText={(text) => setUpload({ ...upload, sku: text })}
-                    />
-                  </View>
-                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <ImageUpload
-                      source={upload?.uri}
-                      onClearImage={() =>
-                        setUpload({
-                          ...upload,
-                          image_path: "",
-                          image_data: "",
-                          uri: require("../../assets/upload.png"),
-                        })
-                      }
-                      onUploadImage={(file) => {
-                        //console.log(file.base64)
-                        setUpload({
-                          ...upload,
-                          image_path: `image-${Date.now()}.jpeg`,
-                          image_data: file.base64,
-                          uri: { uri: file.uri },
-                        });
-                      }}
-                    />
+                    <View style={MyStyles.row}>
+                      <TextInput
+                        mode="flat"
+                        style={{ backgroundColor: "rgba(0,0,0,0)" }}
+                        label="Name"
+                        value={upload?.full_name}
+                        disabled
+                      />
+                      <TextInput
+                        mode="flat"
+                        style={{ backgroundColor: "rgba(0,0,0,0)" }}
+                        label="Mobile No."
+                        value={upload?.mobile}
+                        disabled
+                      />
+
+                      <DropDown
+                        value={upload?.staff_id}
+                        ext_lbl="name"
+                        ext_val="staff_id"
+                        data={staffList}
+                        placeholder="Staff"
+                        onChange={(val) => setUpload({ ...upload, staff_id: val })}
+                        style={[MyStyles.dropdown, {backgroundColor: "rgba(0,0,0,0)", color: "#000", borderColor: "#cccccc"}]}
+                      />
+                    </View>
+
+
+                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#000', marginVertical: 6 }}>Category</Text>
+                      <View style={[MyStyles.checkboxContainer, { fontSize: 12 }]}>
+                        <Pressable onPress={() => toggleCategory('scooter')} style={MyStyles.checkboxRow}>
+                          <View style={[MyStyles.checkbox, category.scooter && MyStyles.checked]}>
+                            {category.scooter && <Text style={MyStyles.tick}>✓</Text>}
+                          </View>
+                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>SCOOTER</Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => toggleCategory('motorcycle')} style={MyStyles.checkboxRow}>
+                          <View style={[MyStyles.checkbox, category.motorcycle && MyStyles.checked]}>
+                            {category.motorcycle && <Text style={MyStyles.tick}>✓</Text>}
+                          </View>
+                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>MOTORCYCLE</Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => toggleCategory('bike')} style={MyStyles.checkboxRow}>
+                          <View style={[MyStyles.checkbox, category.bike && MyStyles.checked]}>
+                            {category.bike && <Text style={MyStyles.tick}>✓</Text>}
+                          </View>
+                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>BIKE</Text>
+                        </Pressable>
+                      </View>
+
+
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#000', marginVertical: 2, marginBottom: 6 }}>Interest</Text>
+                    <View style={[MyStyles.radioContainer, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
+  {['yes', 'followup', 'requirement'].map((item, idx, arr) => (
+    <Pressable
+      key={item}
+      onPress={() => {
+        setInterest(item);
+        console.log(`Interest selected: ${item}`);
+      }}
+      style={[
+        MyStyles.radioRow,
+        idx !== arr.length - 1 ? { marginRight: 40 } : null,
+      ]}
+    >
+      <View style={interest === item ? MyStyles.radioSelected : MyStyles.radio} />
+      <Text style={[MyStyles.radioLabel, { fontSize: 14 }]}>
+        {item === 'yes' ? 'Yes' : item === 'followup' ? 'Follow Up' : 'Requirement'}
+      </Text>
+    </Pressable>
+  ))}
+</View>
+
+
+
                   </View>
                 </View>
               </ScrollView>
               <View style={[MyStyles.row, { margin: 10 }]}>
                 <Button
                   mode="contained"
-                  color="#DC143C"
+                  style={{
+                    backgroundColor: '#f64e60',
+                    color: 'white',
+                  }}
                   uppercase={false}
                   compact
                   onPress={() => {
@@ -1772,43 +1913,48 @@ const Dashboard = (props) => {
                     setUpload(null);
                   }}
                 >
-                  Close
+                  CANCEL
                 </Button>
                 <Button
                   mode="contained"
-                  color="#ffba3c"
+                  style={{
+                    backgroundColor: '#3699fe',
+                    color: 'white',
+                  }}
                   uppercase={false}
                   compact
                   onPress={() => {
-                    postRequest(
-                      "customervisit/UploadCustomerImageMob",
-                      {
-                        base64image: upload.image_data,
-                        imageName: upload.image_path,
-                      },
-                      token
-                    ).then((resp) => {
-                      if (resp.status == 200) {
-                        postRequest("customervisit/insertCustomerUpload", upload, token).then(
-                          (resp) => {
-                            //console.log(resp);
-                            if (resp.status == 200) {
-                              setModal({ ...modal, upload: false });
-                              setUpload(null);
-                            }
-                          }
-                        );
-                      }
-                    });
+                    if(payloadData.length > 0){
+                    setModal({ ...modal, uploadNext: true, checkIn: false, upload: false });
+                    }else{
+                      alert("Please select at least one category");
+                    }
                   }}
                 >
-                  Continue
+                  NEXT
                 </Button>
               </View>
             </View>
           )
         }
       />
+
+      {/*------------ Upload Next Modal ------------------- */}
+      {modal.uploadNext && (
+  {
+    yes: (
+     <InterestYes  visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+    ),
+    followup: (
+     <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'followup'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+    ),
+    requirement: (
+     <InterestRequirement visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+    ),
+  }[interest?.toLowerCase().trim()] || null
+)}
+    
+
 
       {/*------------ Notification Modal ------------------- */}
       <Portal>
@@ -1872,61 +2018,61 @@ const Dashboard = (props) => {
                       {item.notification_type.slice(0, 1)}
                     </Text>
                   </Surface>
-                  <View style={{flexGrow:1, padding:5}}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text
-                      style={{
-                        color: "#FFF",
-                      }}
-                    >
-                      {item.full_name}
-                    </Text>
-                    <Text
-                      style={{
-                        color: "#FFF",
-                      }}
-                    >
-                      {item.mobile}
-                    </Text>
-                  <Text
-                      style={{
-                        color: "#FFF",
-                      }}
-                    >
-                      {item.time}
-                    </Text>
-                    {/* <HTML  source={{ html: item.msg }} /> */}
+                  <View style={{ flexGrow: 1, padding: 5 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text
+                        style={{
+                          color: "#FFF",
+                        }}
+                      >
+                        {item.full_name}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "#FFF",
+                        }}
+                      >
+                        {item.mobile}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "#FFF",
+                        }}
+                      >
+                        {item.time}
+                      </Text>
+                      {/* <HTML  source={{ html: item.msg }} /> */}
+                    </View>
+                    {item.notification_type == "Feedback" && (
+                      <>
+                        <View style={{ display: "flex", flexDirection: "row" }}>
+                          {[...Array(item.f_count)].map((el, index) => <Text key={index}>⭐</Text>)}
+                        </View>
+                        <View style={{ width: 250 }}>
+                          <Text
+                            style={{
+                              color: "#FFF",
+                              wordWrap: 'break-word'
+                            }}
+                          >
+                            {item.f_service}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+
+                    {item.notification_type != "Feedback" && (
+                      <Text
+                        style={{
+                          color: "#FFF",
+                        }}
+                      >
+                        {item.notification_type}
+                      </Text>
+
+                    )}
+
                   </View>
-                  {item.notification_type == "Feedback" && (
-                    <>
-                    <View style={{display:"flex", flexDirection:"row"}}>
-                    {[...Array(item.f_count)].map((el, index) => <Text key={index}>⭐</Text>)}
-                    </View>
-                    <View style={{ width:250}}>
-                    <Text
-                      style={{
-                        color: "#FFF",
-                        wordWrap:'break-word'
-                      }}
-                    >
-                      {item.f_service}
-                    </Text>
-                    </View>
-                    </>
-                  )}
-                  
-                    {item.notification_type!="Feedback" && (
-                    <Text
-                      style={{
-                        color: "#FFF",
-                      }}
-                    >
-                      {item.notification_type}
-                    </Text>
-                  
-                  )}
-                  
-                </View>
                 </View>
               )}
               keyExtractor={(item, index) => index.toString()}

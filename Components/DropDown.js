@@ -63,7 +63,7 @@ const DropDown = ({
             borderColor: disabled ? "#555" : "#7a7a7a",
             borderRadius: 5,
             marginTop: 8,
-            height: 60,
+            height: 40,
             width: "100%",
             backgroundColor: "rgba(0,0,0,0)",
           },
@@ -77,7 +77,7 @@ const DropDown = ({
                 visible={visible}
                 onDismiss={() => setVisible(false)}
                 contentContainerStyle={{
-                  bottom: 0,
+                  bottom: 10,
                   width: "100%",
                   position: "absolute",
                 }}

@@ -16,6 +16,7 @@ const CustomModal = ({ visible, content, onDismiss }) => {
           width: "70%",
           maxHeight: "90%",
           marginLeft: "auto",
+          marginBottom: "auto",
           marginRight: "auto",
           borderRadius: 2,
           padding: 10,
