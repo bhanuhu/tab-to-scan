@@ -11,7 +11,7 @@ import {
   configureFonts,
 } from "react-native-paper";
 import * as Font from "expo-font";
-import AppLoading from "expo-app-loading";
+import * as SplashScreen from 'expo-splash-screen';
 import * as SecureStore from "expo-secure-store";
 import { AuthContext } from "./Components/Context";
 import Dashboard from "./Screens/Dashboard/Dashboard";
@@ -58,96 +58,96 @@ export default function App() {
     ...NavigationDefaultTheme,
   };
 
-  const initialLoginState = {
-    isLoading: true,
-    branchName: null,
-    token: null,
-    branchId: null,
-    logoPath: null,
-  };
+const initialLoginState = {
+  isLoading: true,
+  branchName: null,
+  token: null,
+  branchId: null,
+  logoPath: null,
+};
 
-  const loginReducer = (prevState, action) => {
-    switch (action.type) {
-      case "RETRIEVE_TOKEN":
-        return {
-          ...prevState,
-          token: action.token,
-          branchName: action.branch_name,
-          branchId: action.branch_id,
-          logoPath: action.logo_path,
+const loginReducer = (prevState, action) => {
+  switch (action.type) {
+    case "RETRIEVE_TOKEN":
+      return {
+        ...prevState,
+        token: action.token,
+        branchName: action.branch_name,
+        branchId: action.branch_id,
+        logoPath: action.logo_path,
 
-          isLoading: false,
-        };
-      case "LOGIN":
-        return {
-          ...prevState,
-          token: action.token,
-          branchName: action.branch_name,
-          branchId: action.branch_id,
-          logoPath: action.logo_path,
-          isLoading: false,
-        };
+        isLoading: false,
+      };
+    case "LOGIN":
+      return {
+        ...prevState,
+        token: action.token,
+        branchName: action.branch_name,
+        branchId: action.branch_id,
+        logoPath: action.logo_path,
+        isLoading: false,
+      };
 
-      case "LOGOUT":
-        return {
-          ...prevState,
-          token: null,
-          branchName: null,
-          branchId: null,
-          logoPath: null,
-          isLoading: false,
-        };
-    }
-  };
+    case "LOGOUT":
+      return {
+        ...prevState,
+        token: null,
+        branchName: null,
+        branchId: null,
+        logoPath: null,
+        isLoading: false,
+      };
+  }
+};
 
   const [loginState, dispatch] = React.useReducer(loginReducer, initialLoginState);
 
   const authContext = React.useMemo(
     () => ({
-      signIn: async ({ branchName, branchId, logoPath, token }) => {
-        try {
-          await SecureStore.setItemAsync("branchName", branchName);
-          await SecureStore.setItemAsync("branchId", String(branchId));
-          await SecureStore.setItemAsync("logoPath", logoPath);
-          await SecureStore.setItemAsync("token", token);
-        } catch (e) {
-          console.log(e);
-        }
-        dispatch({
-          type: "LOGIN",
-          token: token,
+    signIn: async ({ branchName, branchId, logoPath, token }) => {
+      try {
+        await SecureStore.setItemAsync("branchName", branchName);
+        await SecureStore.setItemAsync("branchId", String(branchId));
+        await SecureStore.setItemAsync("logoPath", logoPath);
+        await SecureStore.setItemAsync("token", token);
+      } catch (e) {
+        console.log(e);
+      }
+      dispatch({
+        type: "LOGIN",
+        token: token,
+        branch_name: branchName,
+        branch_id: branchId,
+        logo_path: logoPath,
+      });
+    },
+    signOut: async () => {
+      try {
+        await SecureStore.deleteItemAsync("token");
+        await SecureStore.deleteItemAsync("branchName");
+        await SecureStore.deleteItemAsync("branchId");
+        await SecureStore.deleteItemAsync("logoPath");
+      } catch (e) {
+        console.log(e);
+      }
+      dispatch({ type: "LOGOUT" });
+    },
+    getDetails: async () => {
+      try {
+        const token = await SecureStore.getItemAsync("token");
+        const branchName = await SecureStore.getItemAsync("branchName");
+        const branchId = await SecureStore.getItemAsync("branchId");
+        const logoPath = await SecureStore.getItemAsync("logoPath");
+        return {
           branch_name: branchName,
           branch_id: branchId,
+          token: token,
           logo_path: logoPath,
-        });
-      },
-      signOut: async () => {
-        try {
-          await SecureStore.deleteItemAsync("token");
-          await SecureStore.deleteItemAsync("branchName");
-          await SecureStore.deleteItemAsync("branchId");
-          await SecureStore.deleteItemAsync("logoPath");
-        } catch (e) {
-          console.log(e);
-        }
-        dispatch({ type: "LOGOUT" });
-      },
-      getDetails: async () => {
-        try {
-          const token = await SecureStore.getItemAsync("token");
-          const branchName = await SecureStore.getItemAsync("branchName");
-          const branchId = await SecureStore.getItemAsync("branchId");
-          const logoPath = await SecureStore.getItemAsync("logoPath");
-          return {
-            branch_name: branchName,
-            branch_id: branchId,
-            token: token,
-            logo_path: logoPath,
-          };
-        } catch (e) {
-          console.log(e);
-        }
-      },
+        };
+      } catch (e) {
+        console.log(e);
+      }
+    },
     }),
     []
   );
@@ -190,14 +190,6 @@ export default function App() {
           </NavigationContainer>
         </AuthContext.Provider>
       </PaperProvider>
-    );
-  } else {
-    return (
-      <AppLoading
-        // startAsync={getFonts}
-        onError={console.warn}
-        // onFinish={() => setFontLoaded(true)}
-      />
     );
   }
 }
