@@ -15,19 +15,23 @@ const CustomModal = ({ visible, content, onDismiss }) => {
           backgroundColor: "rgba(255,255,255,0.85)",
           width: "70%",
           maxHeight: "90%",
+          height: "90%",
           marginLeft: "auto",
           marginBottom: "auto",
           marginRight: "auto",
           borderRadius: 2,
-          padding: 10,
+          paddingHorizontal: 5,
+          paddingVertical: 5,
+
         }}
       >
         <View
           style={{
             borderWidth: 1,
             borderColor: "#555",
-            padding: 10,
             height: "auto",
+            paddingHorizontal: 10,
+            paddingVertical: 5,
           }}
         >
           {content}

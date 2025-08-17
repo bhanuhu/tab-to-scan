@@ -191,5 +191,13 @@ const loginReducer = (prevState, action) => {
         </AuthContext.Provider>
       </PaperProvider>
     );
+  // } else {
+  //   return (
+  //     <SplashScreen
+  //       // startAsync={getFonts}
+  //       onError={console.warn}
+  //       // onFinish={() => setFontLoaded(true)}
+  //     />
+  //   );
   }
 }

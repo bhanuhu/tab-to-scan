@@ -1,10 +1,8 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   TextInput,
   Dimensions,
@@ -12,6 +10,7 @@ import {
 } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { useMemo, useState } from 'react';
+import { Modal, Portal } from 'react-native-paper';
 const { width } = Dimensions.get('window');
 
 // Sample record structure (not enforced in JS)
@@ -55,118 +54,110 @@ function formatToDate(dateTime) {
   }, [searchText, data]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" contentContainerStyle={{
-      backgroundColor: "rgba(255,255,255,0.85)",
-      width: "70%",
-      maxHeight: "90%",
-      minHeight: "90%",
-      marginLeft: "auto",
-      marginBottom: "auto",
-      marginRight: "auto",
-      borderRadius: 2,
-      padding: 10,
-    }}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.title}>Redeem Customer Point</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.close}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Field */}
-          <TextInput
-            placeholder="Search by mobile, type, or remark..."
-            style={styles.searchInput}
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholderTextColor="#999"
-          />
-
-          {/* Table */}
-          <View style={styles.tableWrapper}>
-            {/* Table Header */}
-            <View style={[styles.row, styles.headerRow]}>
-              <Text style={[styles.cell, styles.headerCell]}>Mobile</Text>
-              <Text style={[styles.cell, styles.headerCell]}>Type</Text>
-              <Text style={[styles.cell, styles.headerCell]}>Remark</Text>
-              <Text style={[styles.cell, styles.headerCell]}>Staff Name</Text>
-              <Text style={[styles.cell, styles.headerCell]}>Points</Text>
-              <Text style={[styles.cell, styles.headerCell]}>Date</Text>
+    <Portal>
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={styles.modalContentContainer}>
+          <View style={styles.modalContainer}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.title}>Redeem Customer Point</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Text style={styles.close}>✕</Text>
+              </TouchableOpacity>
             </View>
-            {/* Table Data - scrollable */}
-            <ScrollView style={styles.tableBodyScroll}>
-              {Array.isArray(filteredData) && filteredData.length > 0 ? (
-                filteredData.map((item, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.row,
-                      idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
-                    ]}
-                  >
-                    <Text style={styles.cell}>{item.mobile}</Text>
-                    <Text style={styles.cell}>{item.type}</Text>
-                    <Text style={styles.cell}>{item.remark}</Text>
-                    <Text style={styles.cell}>{item.staff_name}</Text>
-                    <Text style={styles.cell}>{item.points}</Text>
-                    <Text style={[styles.cell, styles.dateCell]}>{formatToDate(item.date_time)}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noData}>No records found.</Text>
-              )}
-            </ScrollView>
+
+            {/* Search Field */}
+            <TextInput
+              placeholder="Search by mobile, type, or remark..."
+              style={styles.searchInput}
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholderTextColor="#999"
+            />
+
+            {/* Table */}
+            <View style={styles.tableWrapper}>
+              {/* Table Header */}
+              <View style={[styles.row, styles.headerRow]}>
+                <Text style={[styles.cell, styles.headerCell]}>Mobile</Text>
+                <Text style={[styles.cell, styles.headerCell]}>Type</Text>
+                <Text style={[styles.cell, styles.headerCell]}>Remark</Text>
+                <Text style={[styles.cell, styles.headerCell]}>Staff Name</Text>
+                <Text style={[styles.cell, styles.headerCell]}>Points</Text>
+                <Text style={[styles.cell, styles.headerCell]}>Date</Text>
+              </View>
+              {/* Table Data - scrollable */}
+              <ScrollView style={styles.tableBodyScroll}>
+                {Array.isArray(filteredData) && filteredData.length > 0 ? (
+                  filteredData.map((item, idx) => (
+                    <View
+                      key={idx}
+                      style={[
+                        styles.row,
+                        idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
+                      ]}
+                    >
+                      <Text style={styles.cell}>{item.mobile}</Text>
+                      <Text style={styles.cell}>{item.type}</Text>
+                      <Text style={styles.cell}>{item.remark}</Text>
+                      <Text style={styles.cell}>{item.staff_name}</Text>
+                      <Text style={styles.cell}>{item.points}</Text>
+                      <Text style={[styles.cell, styles.dateCell]}>{formatToDate(item.date_time)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noData}>No records found.</Text>
+                )}
+              </ScrollView>
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+    </Portal>
   );
 };
 
 export default CustomerPointsModal;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  modalContentContainer: {
+    backgroundColor: 'transparent',
+    width: '80%',
+    alignSelf: 'center',
+    margin: 0,
+    padding: 0,
+    bottom: '5%',
+    height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   searchInput: {
     height: 40,
-    borderColor: '#e5e5e5',
+    borderColor: '#dcdcdc',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     paddingHorizontal: 12,
-    margin: 16,
-    marginBottom: 0,
+    margin: 8,
     backgroundColor: '#fff',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    width: '90%',
-    borderRadius: 10,
-    padding: 8,
-    maxHeight: '90%',
-    overflow: 'scroll',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    fontSize: 14,
+    color: '#333',
   },
   modalHeader: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: '#ececec',
   },
   title: {
     fontWeight: 'bold',
@@ -181,22 +172,23 @@ const styles = StyleSheet.create({
     color: '#aaa',
   },
   tableWrapper: {
-    margin: 20,
-    marginTop: 18,
-    
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
-    overflow: 'hidden',
+    flex: 1,
+    margin: 8,
+    borderWidth: 0,
     backgroundColor: '#fff',
+    overflow: 'hidden',
   },
   tableBodyScroll: {
-    maxHeight: 350,
+    flex: 1,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: 44,
+    alignItems: 'center',
+    minHeight: 48,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f3f5',
+    width: '100%',
   },
   headerRow: {
     backgroundColor: '#f8faff',

@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
@@ -12,7 +11,7 @@ import {
 } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { useMemo, useState } from 'react';
-
+import {Modal, Portal} from 'react-native-paper';
 const { width } = Dimensions.get('window');
 
 // Sample record structure (not enforced in JS)
@@ -60,8 +59,9 @@ const filteredData = useMemo(() => {
   // Table rendering is now inline in the return block below.
 
   return (
-    <Modal visible={visible} transparent animationType="fade" style={{overflow: 'scroll'}}>
-      <View style={styles.overlay}>
+    <Portal>
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalContentContainer}>
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -118,51 +118,64 @@ const filteredData = useMemo(() => {
         </View>
       </View>
     </Modal>
+    </Portal>
   );
 };
 
 export default CustomerPointsModal;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  modalContentContainer: {
+    backgroundColor: 'transparent',
+    width: '80%',
+    alignSelf: 'center',
+    margin: 0,
+    padding: 0,
+    bottom: '5%',
+    height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   searchInput: {
     height: 40,
-    borderColor: '#e5e5e5',
+    borderColor: '#dcdcdc',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     paddingHorizontal: 12,
-    margin: 16,
-    marginBottom: 0,
     backgroundColor: '#fff',
+    margin: 8,
+    fontSize: 14,
+    color: '#333',
   },
-    modalContainer: {
+  modalContainer: {
     backgroundColor: '#fff',
-    width: '90%',
+    width: '100%',
+    height: '100%',
     borderRadius: 10,
-    padding: 8,
-    maxHeight: '90%',
-    overflow: 'scroll',
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'column',
   },
   modalHeader: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: '#ececec',
-    width: '100%',
   },
   title: {
     fontWeight: 'bold',
@@ -170,28 +183,30 @@ const styles = StyleSheet.create({
     color: '#22223b',
   },
   closeBtn: {
-    padding: 8,
+    padding: 5,
   },
   close: {
     fontSize: 24,
     color: '#aaa',
   },
   tableWrapper: {
-    margin: 20,
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
-    overflow: 'scroll',
+    flex: 1,
+    margin: 8,
+    borderWidth: 0,
     backgroundColor: '#fff',
+    overflow: 'hidden',
   },
   tableBodyScroll: {
-    maxHeight: 350,
+    flex: 1,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: 44,
+    alignItems: 'center',
+    minHeight: 48,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f3f5',
+    width: '100%',
   },
   headerRow: {
     backgroundColor: '#f8faff',
@@ -200,44 +215,45 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    fontSize: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     color: '#222',
     textAlignVertical: 'center',
     borderRightWidth: 1,
     borderRightColor: '#e5e5e5',
     textAlign: 'left',
     backgroundColor: 'transparent',
+    minWidth: 70,
+    overflow: 'hidden',
   },
   headerCell: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#2196f3',
-    fontSize: 17,
-    textAlign: 'left',
-    backgroundColor: '#f8faff',
-    width: '100%',
+    backgroundColor: '#f1f3f5',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   rowEven: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
   rowOdd: {
-    backgroundColor: '#f4f5f7',
+    backgroundColor: '#f8f9fa',
   },
   dateCell: {
-    color: 'green',
-    fontWeight: '500',
-    textAlign: 'left',
+    color: '#6c757d',
+    fontSize: 12,
   },
   expiredCell: {
-    color: 'red',
+    color: '#dc3545',
     fontWeight: '500',
-    textAlign: 'left',
   },
   noData: {
-    padding: 18,
+    padding: 30,
     textAlign: 'center',
-    color: '#888',
-    fontSize: 16,
+    color: '#6c757d',
+    fontSize: 14,
+    fontStyle: 'italic',
   },
 });

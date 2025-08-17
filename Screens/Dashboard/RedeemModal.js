@@ -16,30 +16,27 @@ const RedeemModal = ({ redeem, points, voucherList, visible, onClose, redeemPoin
     if (!visible) return null;
   return (
     <Portal>
-<Modal contentContainerStyle={{
-          backgroundColor: "rgba(255,255,255,0.85)",
-          width: "70%",
-          maxHeight: "90%",
-          marginLeft: "auto",
-          marginBottom: "auto",
-          marginRight: "auto",
-          borderRadius: 2,
-          padding: 10,
-        }}  visible={visible} onDismiss={onClose}>
-          
-<View style={[styles.container,{
-            }]}>
-      <Text style={styles.header}>Customer Redeem Point System</Text>
-      <View style={styles.divider} />
+      <Modal 
+        visible={visible} 
+        onDismiss={onClose}
+        contentContainerStyle={styles.modalContainer}
+      >
+        <View style={styles.container}>
+          {/* Fixed Header */}
+          <View style={styles.headerSection}>
+            <Text style={styles.header}>Customer Redeem Point System</Text>
+            <View style={styles.divider} />
 
-      <View style={[styles.pointsContainer,{marginBottom: 8}]}>
-        <Button style={styles.badge} onPress={() => {setVisibleVoucher(true)}}>
-          <Text style={styles.buttonText}>VOUCHERS : {redeem[0]?.voucher_count||0}</Text>
-        </Button>
-        <Button style={styles.badge} onPress={() => {setVisiblePoints(true)}}>
-          <Text style={styles.buttonText}>POINTS : {points[0]?.total_points||0}</Text>
-        </Button>
-      </View>
+            <View style={styles.pointsContainer}>
+              <Button style={styles.badge} onPress={() => {setVisibleVoucher(true)}}>
+                <Text style={styles.buttonText}>VOUCHERS : {redeem[0]?.voucher_count||0}</Text>
+              </Button>
+              <Button style={styles.badge} onPress={() => {setVisiblePoints(true)}}>
+                <Text style={styles.buttonText}>POINTS : {points[0]?.total_points||0}</Text>
+              </Button>
+            </View>
+          </View>
+
 
       <View style={styles.profileCard}>
         <Text style={styles.profileTitle}>PROFILE</Text>
@@ -71,18 +68,58 @@ const RedeemModal = ({ redeem, points, voucherList, visible, onClose, redeemPoin
         </View>
       </View>
 
-      <View style={[styles.bottomButtons, {gap: 8}]}>
-        <Button mode="contained" style={[styles.button, { backgroundColor: "#1abc9c" , marginHorizontal: 8}]} onPress={() => {setVisibleExtra(true)}}>
-          <Text style={styles.buttonText}>EXTRA</Text>
-        </Button>
-        <Button
-          mode="contained"
-          style={[styles.button, { backgroundColor: "#e74c3c", marginHorizontal: 8 }]}
-          onPress={onClose}
-        >
-          <Text style={styles.buttonText}>CLOSE</Text>
-        </Button>
-      </View>
+          {/* Scrollable Content */}
+          <ScrollView style={styles.scrollContent}>
+            <View style={styles.profileCard}>
+              <Text style={styles.profileTitle}>PROFILE</Text>
+              <View style={styles.divider} />
+              <View style={styles.profileContent}>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Name</Text>
+                  <Text style={styles.label}>Date Of Birth</Text>
+                  <Text style={styles.label}>Date Of Anniversary</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.value}>{voucherList[0]?.full_name}</Text>
+                  <Text style={styles.value}>{voucherList[0]?.dob}</Text>
+                  <Text style={styles.value}>{voucherList[0]?.doa}</Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.row}>
+                  <Text style={styles.label}>Category Name</Text>
+                  <Text style={styles.label}>Total Visit</Text>
+                  <Text style={styles.label}>Last Visit</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.value}>{voucherList[0]?.category_name}</Text>
+                  <Text style={styles.value}>{voucherList[0]?.visit_count}</Text>
+                  <Text style={styles.value}>{voucherList[0]?.last_visit}</Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Fixed Footer */}
+          <View style={styles.footer}>
+            <View style={styles.bottomButtons}>
+              <Button 
+                mode="contained" 
+                style={[styles.button, styles.extraButton]} 
+                onPress={() => {setVisibleExtra(true)}}
+              >
+                <Text style={styles.buttonText}>EXTRA</Text>
+              </Button>
+              <Button
+                mode="contained"
+                style={[styles.button, styles.closeButton]}
+                onPress={onClose}
+              >
+                <Text style={styles.buttonText}>CLOSE</Text>
+              </Button>
+            </View>
+          </View>
     </View>
   </Modal>
     <Points staffList={staffList} visible={visiblePoints} cusomerId={voucherList[0]?.customer_id} token={token} expiredPoints={expiredPoints} redeemPoints={redeemPoints} data={points} onClose={() => {setVisiblePoints(false); onClose()}} onBack={() => {setVisiblePoints(false)}} totalPoints={points[0]?.total_points} name={voucherList[0]?.full_name} mobile={voucherList[0]?.mobile} />
@@ -97,26 +134,56 @@ export default RedeemModal;
 
 const styles = StyleSheet.create({
     modalContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        width: '80%',
-        height: '90%',
-        maxWidth: 700,
-        padding: 20,
-        alignSelf: 'center',
-        elevation: 6,
-        marginBottom: 8,
-      },
-      container: {
-        width: '100%',
-      },
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      width: '80%',
+      maxWidth: 700,
+      height: '100%',
+      position: 'absolute',
+      left: '10%',
+      right: '10%',
+      bottom: '5%',
+      borderRadius: 10,
+      overflow: 'scroll',
+      padding: 0,
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    container: {
+      flex: 1,
+      width: '100%',
+      flexDirection: 'column',
+      position: 'relative',
+      height: '100%',
+    },
+    headerSection: {
+      padding: 8,
+      backgroundColor: '#fff',
+    },
     header: {
       fontSize: 18,
-      fontWeight: "700",
-      textAlign: "left",
-      paddingLeft: 4,
-      paddingTop: 16,
+      fontWeight: '700',
+      textAlign: 'left',
       color: '#1a1a40',
+      marginBottom: 12,
+    },
+    scrollContent: {
+      flex: 1,
+      padding: 8,
+      paddingBottom: 80, // Space for the fixed footer
+      overflow: 'scroll',
+      margin: 8,
+    },
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 8,
+      paddingTop: 8,
+      backgroundColor: '#fff',
+      borderTopWidth: 1,
+      borderTopColor: '#eee',
+      zIndex: 10,
     },
     landscapeContainer: {
         display: 'flex',
@@ -126,14 +193,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 8,
-        borderRadius: 10,
+        borderRadius: 8,
         backgroundColor: '#f8f9fa',
       },
       bottomButtons: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginTop: 8,
-        marginBottom: 16,
+        gap: 12,
+      },
+      extraButton: {
+        backgroundColor: '#1abc9c',
+        minWidth: 100,
+      },
+      closeButton: {
+        backgroundColor: '#e74c3c',
+        minWidth: 100,
       },
     badge: {
       backgroundColor: "#3d66f2",
@@ -159,6 +233,9 @@ const styles = StyleSheet.create({
       backgroundColor: "#535c65",
       borderRadius: 10,
       padding: 8,
+      margin: 8,
+      marginTop: 8,
+      overflow: 'scroll',
     },
     profileTitle: {
       fontStyle: "italic",
@@ -179,7 +256,7 @@ const styles = StyleSheet.create({
     row: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 10,
+      marginBottom: 4,
     },
     label: {
       flex: 1,
@@ -201,7 +278,7 @@ const styles = StyleSheet.create({
     },
     button: {
       borderRadius: 6,
-      paddingHorizontal: 16,
+      paddingHorizontal: 8,
       minWidth: 100,
     },
   });

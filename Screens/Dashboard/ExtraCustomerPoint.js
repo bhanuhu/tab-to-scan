@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   TextInput,
@@ -10,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Button } from 'react-native-paper';
-import { Portal } from 'react-native-paper';
+import { Portal, Modal } from 'react-native-paper';
 const { width } = Dimensions.get('window');
 import { Divider } from 'react-native-paper';
 import { postRequest } from '../../Services/RequestServices';
@@ -62,299 +61,261 @@ const ExtraCustomerPoint = ({
   };
 
   return (
-    <>
-      <Portal>
-        <Modal 
-          visible={visible} 
-          transparent 
-          animationType="fade"
-        >
-          <View style={styles.overlay}>
-            <View style={[styles.modalContainer, { 
-              width: '80%', 
-              height: '80%',
-              margin: 'auto',
-              backgroundColor: 'white',
-              borderRadius: 2,
-              overflow: 'hidden',
-              marginTop: "3%",
-              elevation: 5,
-            }]}>
-              {/* Scrollable Content */}
-              <View style={styles.scrollContainer}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                  <View style={styles.heading}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', marginTop: 10 }}>Extra Customer Point</Text>
-                  </View>
-                  <Divider />
-                  
-                  {/* Profile Card */}
-                  <View style={styles.customerInfo}>
-                    <View style={styles.customerNameContainer}>
-                      <Text style={styles.customerName}>{name?.toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.customerPhoneContainer}>
-                      <Text style={styles.customerPhone}>{mobile}</Text>
-                    </View>
-                    <View style={styles.pointsBox}>
-                      <Text style={styles.pointsText}>TOTAL POINTS: {totalPoints}</Text>
-                    </View>
-                  </View>
-
-                  {/* Redeem Form Section */}
-                  <View style={styles.formRow}>
-                    {/* Left Column */}
-                    <View style={[styles.formCol, { marginRight: 12 }]}>
-                      <Text style={styles.label}>Extra Points</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Extra Points"
-                        value={redeemPoints}
-                        onChangeText={setRedeemingPoints}
-                        keyboardType="numeric"
-                        maxLength={6}
-                        placeholderTextColor="#999"
-                      />
-                      <Text style={styles.helperText}>Enter a value that is smaller or equal to {totalPoints}.</Text>
-                    </View>
-                    {/* Right Column */}
-                    <View style={styles.formCol}>
-                      <Text style={styles.label}>Staff Name</Text>
-                      <DropDown
-                        ext_lbl="name"
-                        ext_val="staff_id"
-                        data={staffList}
-                        placeholder="Select Staff"
-                        onChange={setStaffName}
-                        style={[MyStyles.dropdown, {maxHeight: 47, justifyContent: 'center', marginBottom: 30, borderColor: '#ced4da', borderWidth: 1}]} 
-
-                      />
-                    </View>
-                  </View>
-
-                  {/* Remark Section */}
-                  <View style={styles.remarkSection}>
-                    <Text style={styles.label}>Remark</Text>
-                    <TextInput
-                      style={styles.remarkInput}
-                      placeholder="Type here..."
-                      value={remark}
-                      onChangeText={setRemark}
-                      maxLength={200}
-                      placeholderTextColor="#999"
-                    />
-                    <Text style={styles.charCount}>
-                      <Text style={{ color: remainingChars === 0 ? 'blue' : '#222', fontWeight: 'bold' }}>{200 - remainingChars}</Text>/200
-                    </Text>
-                  </View>
-                  <Divider />
-                </ScrollView>
+    <Portal>
+      <Modal 
+        visible={visible} 
+        onDismiss={onClose} 
+        contentContainerStyle={styles.modalContentContainer}
+      >
+        <View style={styles.modalContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Extra Customer Point</Text>
+          </View>
+          
+          {/* Scrollable Content */}
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Customer Info */}
+            <View style={styles.customerInfo}>
+              <View style={styles.customerNameContainer}>
+                <Text style={styles.customerName}>{name?.toUpperCase()}</Text>
               </View>
-
-              {/* Fixed Bottom Action Buttons */}
-              <View style={styles.fixedBottom}>
-                <View style={styles.actionRow}>
-                  <Button mode="contained" style={[styles.actionButton, styles.submit]} labelStyle={styles.actionLabel} onPress={handleSubmit}>
-                    <Text style={{ fontSize: 12 }}>ADD POINTS</Text>
-                  </Button>
-                  <Button mode="contained" style={[styles.actionButton, styles.back]} labelStyle={styles.actionLabel} onPress={onBack}>
-                    <Text style={{ fontSize: 12 }}>BACK</Text>
-                  </Button>
-                  <Button mode="contained" style={[styles.actionButton, styles.close]} labelStyle={styles.actionLabel} onPress={onClose}>
-                    <Text style={{ fontSize: 12 }}>CLOSE</Text>
-                  </Button>
-                </View>
+              <View style={styles.customerPhoneContainer}>
+                <Text style={styles.customerPhone}>{mobile}</Text>
+              </View>
+              <View style={styles.pointsBox}>
+                <Text style={styles.pointsText}>TOTAL POINTS: {totalPoints}</Text>
               </View>
             </View>
+
+            {/* Form Section */}
+            <View style={styles.formSection}>
+              <View style={styles.formRow}>
+                <View style={[styles.formCol, { marginRight: 12 }]}>
+                  <Text style={styles.label}>Extra Points</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Extra Points"
+                    value={redeemingPoints}
+                    onChangeText={setRedeemingPoints}
+                    keyboardType="numeric"
+                    maxLength={6}
+                    placeholderTextColor="#999"
+                  />
+                  <Text style={styles.helperText}>Enter a value that is smaller or equal to {totalPoints}.</Text>
+                </View>
+                
+                <View style={styles.formCol}>
+                  <Text style={styles.label}>Staff Name</Text>
+                  <DropDown
+                    ext_lbl="name"
+                    ext_val="staff_id"
+                    data={staffList}
+                    placeholder="Select Staff"
+                    onChange={setStaffName}
+                    style={[styles.dropdown, { marginBottom: 16 }]}
+                  />
+                </View>
+              </View>
+
+              {/* Remark Section */}
+              <View style={styles.remarkSection}>
+                <Text style={styles.label}>Remark</Text>
+                <TextInput
+                  style={styles.remarkInput}
+                  placeholder="Type here..."
+                  value={remark}
+                  onChangeText={setRemark}
+                  maxLength={200}
+                  multiline
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.charCount}>
+                  <Text style={{ color: remainingChars === 0 ? 'red' : '#666', fontWeight: '500' }}>
+                    {200 - remainingChars}
+                  </Text>/200
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Fixed Footer */}
+          <View style={styles.footer}>
+            <View style={styles.actionRow}>
+              <Button 
+                mode="contained" 
+                style={[styles.actionButton, styles.submit]} 
+                labelStyle={styles.actionLabel} 
+                onPress={handleSubmit}
+              >
+                ADD POINTS
+              </Button>
+              <Button 
+                mode="contained" 
+                style={[styles.actionButton, styles.back]} 
+                labelStyle={styles.actionLabel} 
+                onPress={onBack}
+              >
+                BACK
+              </Button>
+              <Button 
+                mode="contained" 
+                style={[styles.actionButton, styles.close]} 
+                labelStyle={styles.actionLabel} 
+                onPress={onClose}
+              >
+                CLOSE
+              </Button>
+            </View>
           </View>
-        </Modal>
-      </Portal>
-    </>
+        </View>
+      </Modal>
+    </Portal>
   );
 };
 
 export default ExtraCustomerPoint;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  modalContentContainer: {
+    backgroundColor: 'transparent',
+    width: '80%',
+    alignSelf: 'center',
+    margin: 0,
+    padding: 0,
+    bottom: '5%',
+    height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
   },
   modalContainer: {
-    width: '100%',
-    maxWidth: 600,
     backgroundColor: 'white',
+    width: '100%',
+    height: '100%',
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    overflow: 'hidden',
+    display: 'flex',
     flexDirection: 'column',
   },
-  scrollContainer: {
+  scrollView: {
     flex: 1,
   },
-  fixedBottom: {
+  header: {
     padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
   },
-  scrollContent: {
-    padding: 16,
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 10,
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
     textAlign: 'center',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  tabButton: {
-    flex: 1,
-    marginHorizontal: 2,
-    borderRadius: 10,
-    elevation: 0,
-    backgroundColor: '#e4e6ef',
-    height: 38,
-    justifyContent: 'center',
-  },
-  activeButton: {
-    backgroundColor: '#3699fe',
-  },
-  redeemButton: {
-    backgroundColor: '#f64e60',
-  },
-  expireButton: {
-    backgroundColor: '#f64e60',
-  },
-  tabButtonLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
   },
   customerInfo: {
     backgroundColor: "#fdfdfd",
     elevation: 3,
     borderRadius: 10,
-    padding: 5,
+    padding: 8,
     marginBottom: 4,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   customerName: {
-    fontStyle: "italic",
     fontSize: 16,
-    color: "#888",
-
-    marginLeft: 8,
+    fontWeight: 'bold',
+    color: '#212529',
+    textAlign: 'center',
   },
-  // customerNameContainer: {
-  //   textAlign: "center",
-  // },
+  customerPhoneContainer: {
+    marginBottom: 12,
+  },
   customerPhone: {
-    fontStyle: "italic",
-    fontSize: 16,
-    color: "#888",
-    // textAlign: "center",
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
   },
   pointsBox: {
-    backgroundColor: "#ffa500",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    backgroundColor: '#007bff',
+    padding: 8,
     borderRadius: 4,
+    alignSelf: 'center',
   },
-  profileMobile: {
-    fontSize: 20,
-    fontStyle: 'italic',
-    color: '#b0b0b0',
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'right',
-  },
-  profilePointsBadge: {
-    backgroundColor: '#ffba3c',
-    borderRadius: 7,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    marginLeft: 16,
-  },
-  profilePointsText: {
+  pointsText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 15,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+  },
+  formSection: {
+    flex: 1,
   },
   formRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 6,
-    flexWrap: 'wrap',
-    flexShrink: 1,
+    marginBottom: 16,
   },
   formCol: {
     flex: 1,
-    minWidth: 120,
-    flexShrink: 1,
   },
   label: {
-    fontSize: 17,
+    marginBottom: 8,
+    fontSize: 14,
     fontWeight: '500',
-    color: '#222',
-    marginBottom: 5,
+    color: '#495057',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d6d6d6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 4,
-    backgroundColor: '#fafbfc',
-    color: '#222',
+    borderColor: '#ced4da',
+    borderRadius: 4,
+    padding: 10,
+    fontSize: 14,
+    color: '#212529',
+    backgroundColor: '#fff',
   },
   helperText: {
-    fontSize: 13,
-    color: '#b0b0b0',
-    marginBottom: 8,
-    marginLeft: 2,
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 4,
+  },
+  dropdown: {
+    borderWidth: 1,
+    borderColor: '#ced4da',
+    borderRadius: 4,
+    height: 47,
+    justifyContent: 'center',
+    paddingBottom: 8,
   },
   remarkSection: {
-    marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   remarkInput: {
     borderWidth: 1,
     borderColor: '#ced4da',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: '#fafbfc',
-    color: '#222',
-    minHeight: 10,
-    maxHeight: 100,
-    marginBottom: 2,
+    borderRadius: 4,
+    padding: 10,
+    fontSize: 14,
+    color: '#212529',
+    backgroundColor: '#fff',
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   charCount: {
-    alignSelf: 'flex-start',
-    fontSize: 13,
-    color: 'blue',
-    fontWeight: '500',
-    marginTop: 2,
-    marginLeft: 2,
+    fontSize: 12,
+    color: '#6c757d',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  footer: {
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
   },
   actionRow: {
     flexDirection: 'row',
@@ -363,6 +324,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     gap: 8,
     flexWrap: 'wrap',
+    marginBottom: 10,
   },
   actionButton: {
     borderRadius: 8,
@@ -381,10 +343,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f64e60',
   },
   actionLabel: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 0.5,
   },
 
   header: {

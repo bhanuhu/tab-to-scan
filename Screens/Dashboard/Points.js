@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   TextInput,
@@ -10,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Button } from 'react-native-paper';
-import { Portal } from 'react-native-paper';
+import { Portal, Modal } from 'react-native-paper';
 import ActivePoints from './ActivePoints';
 import RedeemPoints from './RedeemPoints';
 import ExpirePoints from './ExpirePoints';  
@@ -67,25 +66,14 @@ const Points = ({
     };
 
   return (
-    <Modal 
-      visible={visible} 
-      transparent 
-      animationType="fade"
-    >
-      <View style={styles.overlay}>
-        <View style={[styles.modalContainer, {
-          width: "80%",
-          maxHeight: "85%",
-          minHeight: "85%",
-          marginLeft: "auto",
-          marginRight: "auto",
-          marginTop: '6%',
-          backgroundColor: 'white',
-          borderRadius: 2,
-          overflow: 'hidden',
-          flexDirection: 'column',
-        }]}>
-          {/* Fixed Header */}
+    <Portal>
+      <Modal 
+        visible={visible} 
+        onDismiss={onClose} 
+        contentContainerStyle={styles.modalContentContainer}
+      >
+        <View style={styles.modalContainer}>
+          {/* Header with Tabs */}
           <View style={styles.header}>
             <View style={styles.buttonRow}>
               <Button
@@ -121,33 +109,6 @@ const Points = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={true}
           >
-              {/* Tab Row */}
-              {/* <View style={styles.buttonRow}>
-                <Button
-                  mode="contained"
-                  style={[styles.tabButton, styles.activeButton]}
-                  labelStyle={styles.tabButtonLabel}
-                  onPress={() => setVisibleActivePoints(true)}
-                >
-                  <Text style={{ fontSize: 12 }}>Active Points</Text>
-                </Button>
-                <Button
-                  mode="contained"
-                  style={[styles.tabButton, styles.redeemButton]}
-                  labelStyle={[styles.tabButtonLabel, { color: '#222' }]}
-                  onPress={() => setVisibleRedeemPoints(true)}
-                >
-                  <Text style={{ fontSize: 12 }}>Redeem Points</Text>
-                </Button>
-                <Button
-                  mode="contained"
-                  style={[styles.tabButton, styles.expireButton]}
-                  labelStyle={styles.tabButtonLabel}
-                  onPress={() => setVisibleExpiredPoints(true)}
-                >
-                  <Text style={{ fontSize: 12 }}>Expire Points</Text>
-                </Button>
-              </View> */}
 
               {/* Profile Card */}
               <View style={styles.customerInfo}>
@@ -260,7 +221,6 @@ const Points = ({
               </Button>
             </View>
           </View>
-      </View>
       <RedeemPoints 
         visible={visibleRedeemPoints} 
         onClose={() => setVisibleRedeemPoints(false)} 
@@ -277,62 +237,70 @@ const Points = ({
         data={data} 
       />
     </Modal>
+    </Portal>
   );
 };
 
 export default Points;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  modalContentContainer: {
+    backgroundColor: 'transparent',
+    width: '80%',
+    alignSelf: 'center',
+    margin: 0,
+    padding: 0,
+    bottom:"5%",
+    height: '100%',
     justifyContent: 'center',
-    padding: 16,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
-    padding: 16,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     backgroundColor: '#f5f5f5',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
+    width: '100%',
   },
   scrollContent: {
-    padding: 16,
+    padding: 8,
+    paddingBottom: 0,
+    flexGrow: 1,
+    minHeight: '80%',
   },
   footer: {
-    padding: 16,
+    padding: 8,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     backgroundColor: '#f5f5f5',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
+    width: '100%',
+    position: 'relative',
+    bottom: 0,
   },
-  modalContainer: {
-    width: '70%',
-    maxWidth: 610,
-    maxHeight: '70%',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 4,
-    margin: 4,
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.08,
-    // shadowRadius: 6,
-    // elevation: 5,
-    justifyContent: 'center',
-    alignItems: 'stretch',
-  },
+  // Removed duplicate modalContainer style
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 10,
     maxWidth: 450,
-    gap: 20,
+    gap: 8,
   },
   tabButton: {
     flex: 1,
@@ -361,7 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fdfdfd",
     elevation: 3,
     borderRadius: 10,
-    padding: 5,
+    padding: 8,
     marginBottom: 4,
     flexDirection: "row",
     alignItems: "center",
@@ -447,7 +415,7 @@ const styles = StyleSheet.create({
   },
   remarkSection: {
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   remarkInput: {
     borderWidth: 1,
@@ -475,15 +443,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 2,
     gap: 8,
     flexWrap: 'wrap',
   },
   actionButton: {
     borderRadius: 8,
     minWidth: 90,
-    height: 35,
     marginHorizontal: 2,
+    marginBottom: 2,
     justifyContent: 'center',
   },
   submit: {
@@ -504,9 +472,8 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: '#f5f5f5',
-    padding: 15,
+    padding: 8,
     borderRadius: 10,
-    marginBottom: 20,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -567,7 +534,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 20,
+    marginTop: 8,
   },
   button: {
     paddingHorizontal: 16,

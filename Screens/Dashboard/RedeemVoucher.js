@@ -20,29 +20,23 @@ const CustomerRedeemModal = ({
   return (
     <Portal>
 
-      <Modal visible={visible} onDismiss={onClose} contentContainerStyle={{
-          backgroundColor: "rgba(255,255,255,0.85)",
-          width: "70%",
-          maxHeight: "90%",
-          minHeight: "90%",
-          marginLeft: "auto",
-          marginBottom: "auto",
-          marginRight: "auto",
-          borderRadius: 2,
-        }}>
-        <View style={styles.customerInfo}>
+      <Modal 
+        visible={visible} 
+        onDismiss={onClose} 
+        contentContainerStyle={styles.modalContainer}
+      >
+         <View style={styles.customerInfo}>
           <View style={styles.customerNameContainer}>
-          <Text style={styles.customerName}>{customer.name}</Text>
-          </View>
-          <View style={styles.customerPhoneContainer}>
-          <Text style={styles.customerPhone}>{customer.phone}</Text>
+            <Text style={styles.customerName}>{customer.name}</Text>
+            <Text style={styles.customerPhone}>{customer.phone}</Text>
           </View>
           <View style={styles.pointsBox}>
             <Text style={styles.pointsText}>TOTAL POINT: {totalPoints}</Text>
           </View>
         </View>
 
-        <DataTable style={{ borderBottomWidth: 0 }}>
+        <View style={styles.contentContainer}>
+          <View style={styles.dataTableContainer}>
           <DataTable.Header>
             {["Voucher", "Details", "Offer", "Issue Date", "Expiry Date", "Action"].map((col) => (
               <DataTable.Title key={col} style={styles.cellHeader}>
@@ -82,7 +76,8 @@ const CustomerRedeemModal = ({
             </View>
           )}
 
-        </DataTable>
+          </View>
+        </View>
 
         <View style={styles.footer}>
         <Button
@@ -111,11 +106,16 @@ const CustomerRedeemModal = ({
 
 const styles = StyleSheet.create({
   modalContainer: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 8,
-    padding: 16,
-    minHeight: "60%",
+    backgroundColor: 'white',
+    width: '80%',
+    maxWidth: 1000,
+    height: '100%',
+    alignSelf: 'center',
+    bottom: "5%",
+    borderRadius: 10,
+    overflow: 'hidden',
+    padding: 0,
+    flexDirection: 'column',
   },
   title: {
     fontSize: 18,
@@ -124,30 +124,38 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   customerInfo: {
-    backgroundColor: "#fdfdfd",
-    width: "95%",
-    marginLeft: 18,
-    elevation: 5,
-    borderRadius: 10,
-    padding: 5,
-    marginBottom: 10,
-    marginTop: 15,
+    backgroundColor: "#f8f9fa",
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    zIndex: 10,
+    marginVertical:8
+  },
+  customerNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flex: 0.6,
   },
   customerName: {
-    fontStyle: "italic",
     fontSize: 16,
-    color: "#888",
-    marginLeft: 8,
-    
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
   customerPhone: {
-    fontStyle: "italic",
-    fontSize: 16,
-    color: "#888",
-  
+    fontSize: 14,
+    color: '#666',
   },
   pointsBox: {
     backgroundColor: "#ffa500",
@@ -182,7 +190,22 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 16,
+    padding: 8,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 8,
+    paddingBottom: 60, // Space for footer
+  },
+  dataTableContainer: {
+    flex: 1,
   },
 });
 

@@ -558,7 +558,7 @@ const Dashboard = (props) => {
         visible={modal.details}
         content={
           !details ? (
-            <View>
+            <View style={{ height: "100%" }}>
               <TextInput
                 mode="flat"
                 style={{ backgroundColor: "rgba(0,0,0,0)" }}
