@@ -153,12 +153,12 @@ const InterestFollowUp = ({
                             <Text style={[MyStyles.headerText,{marginBottom:10, fontSize:16, fontWeight:"bold"}]}>Follow Up:</Text>
                             <FollowUpDateTimePicker
                                 value={date}
+                                onChange={setDate}
                                 mode="datetime"
                                 is24Hour={false}
-                                flex={0.6}
-                                style={{flex:0.6, borderColor:"#f17022", borderWidth:1, borderRadius:6, backgroundColor:"#fff", padding:10}}
-                                display={Platform.OS === "android" ? "default" : "spinner"}
-                                onChange={date => setDate(date)}/>
+                                style={{ flex: 0.6 }}
+                                display={Platform.OS === 'android' ? 'default' : 'spinner'}
+                            />
                         </View>
             <ScrollView>
               <View style={[MyStyles.row, { justifyContent: "space-around", flexWrap: 'wrap' }]}>

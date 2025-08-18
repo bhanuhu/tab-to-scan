@@ -1,92 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, Platform, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StyleSheet, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 
 export default function FollowUpDateTimePicker({
-  value,
-  mode = 'date',
-  is24Hour = true,
-  display = Platform.OS === 'android' ? 'default' : 'spinner',
-  visible = true,
+  value = new Date(),
+  onChange,
+  mode = 'datetime',
+  is24Hour = false,
+  display = 'default',
   style,
   flex,
 }) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [internalDate, setInternalDate] = useState(value || new Date());
-  const [formattedDate, setFormattedDate] = useState(moment(value || new Date()).format('DD-MM-YYYY HH:mm'));
-  const [currentMode, setCurrentMode] = useState(mode);
+  const [show, setShow] = useState(false);
+  const [currentMode, setCurrentMode] = useState('date');
+  const [internalDate, setInternalDate] = useState(value);
 
   useEffect(() => {
-    if (value) {
-      setInternalDate(value);
-      setFormattedDate(moment(value).format('DD-MM-YYYY HH:mm'));
-    }
+    setInternalDate(value);
   }, [value]);
 
   const handleChange = (event, selectedDate) => {
-    const currentDate = selectedDate || internalDate;
-    setInternalDate(currentDate);
-    setFormattedDate(moment(currentDate).format('DD-MM-YYYY HH:mm'));
-
-    if (onChange) {
-      onChange(event, currentDate);
-    }
-
     if (Platform.OS === 'android') {
-      setShowPicker(false);
-      // Move from date to time picker automatically if mode is 'datetime'
-      if (mode === 'datetime' && currentMode === 'date') {
-        setTimeout(() => {
-          setCurrentMode('time');
-          setShowPicker(true);
-        }, 300);
+      setShow(false);
+    }
+
+    if (selectedDate) {
+      const newDate = selectedDate || internalDate;
+      setInternalDate(newDate);
+
+      if (currentMode === 'date' && mode === 'datetime') {
+        // After date is selected, show time picker on Android
+        setCurrentMode('time');
+        if (Platform.OS === 'ios') return;
+        setTimeout(() => setShow(true), 100);
+      } else {
+        // When time is selected or in single mode, update the parent
+        if (onChange) {
+          onChange(newDate);
+        }
+        setCurrentMode('date'); // Reset for next time
       }
+    } else {
+      setCurrentMode('date'); // Reset if cancelled
     }
   };
-  
 
-  const showMode = (pickerMode) => {
-    setCurrentMode(pickerMode);
-    setShowPicker(true);
+  const showPicker = () => {
+    setCurrentMode('date');
+    setShow(true);
   };
 
-  const showDatepicker = () => showMode('date');
-  const showTimepicker = () => showMode('time');
-
-  if (!visible) return null;
+  const handleDone = () => {
+    setShow(false);
+    if (onChange) {
+      onChange(internalDate);
+    }
+  };
 
   return (
-    <View style={[styles.container, style, flex && { flex }]}>
-      <Pressable style={styles.dateTimeButton} onPress={showDatepicker}>
-        <Text style={styles.selectedDate}>{formattedDate}</Text>
-      </Pressable>
+    <View style={[styles.container, style, { flex }]}>
+      <TouchableOpacity onPress={showPicker} style={styles.dateButton}>
+        <Text style={styles.dateText}>
+          {moment(internalDate).format('DD/MM/YYYY hh:mm A')}
+        </Text>
+      </TouchableOpacity>
 
-      {showPicker && (
+      {show && (
         Platform.OS === 'ios' ? (
           <Modal
             transparent
             animationType="slide"
-            visible={showPicker}
-            onRequestClose={() => setShowPicker(false)}
+            visible={show}
+            onRequestClose={() => setShow(false)}
           >
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
                 <DateTimePicker
                   value={internalDate}
-                  mode={currentMode}
+                  mode={mode}
                   is24Hour={is24Hour}
                   display={display}
                   onChange={handleChange}
-                  minimumDate={new Date()}
-                  style={styles.picker}
                 />
                 <View style={styles.buttonRow}>
-                  <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setShowPicker(false)}>
-                    <Text style={styles.buttonText}>Cancel</Text>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.cancelButton]} 
+                    onPress={() => setShow(false)}
+                  >
+                    <Text>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.button, styles.doneButton]} onPress={() => setShowPicker(false)}>
-                    <Text style={[styles.buttonText, { color: '#fff' }]}>Done</Text>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.doneButton]} 
+                    onPress={handleDone}
+                  >
+                    <Text style={{color: '#fff'}}>Done</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -99,7 +107,6 @@ export default function FollowUpDateTimePicker({
             is24Hour={is24Hour}
             display={display}
             onChange={handleChange}
-            minimumDate={new Date()}
           />
         )
       )}
@@ -109,15 +116,18 @@ export default function FollowUpDateTimePicker({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    marginBottom: 16,
+    flex: 1,
   },
-  dateTimeButton: {
-    padding: 12,
+  dateButton: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#f17022',
+    borderRadius: 6,
+    backgroundColor: '#fff',
   },
-  selectedDate: {
-    fontSize: 16,
+  dateText: {
     color: '#333',
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
@@ -125,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -137,13 +147,15 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 10,
-    borderRadius: 6,
     marginLeft: 10,
+    borderRadius: 5,
     minWidth: 80,
     alignItems: 'center',
   },
-  cancelButton: { backgroundColor: '#e0e0e0' },
-  doneButton: { backgroundColor: '#f17022' },
-  buttonText: { color: 'white', fontWeight: '600', textAlign: 'center' },
-  picker: { width: '100%' },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+  },
+  doneButton: {
+    backgroundColor: '#f17022',
+  },
 });
