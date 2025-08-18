@@ -19,6 +19,15 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow QuickTagg to access your photos",
+          "cameraPermission": "Allow QuickTagg to access your camera"
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.quicktagg.app"
@@ -29,7 +38,13 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.quicktagg.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -251,7 +251,8 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
     bottom:"5%",
-    height: '100%',
+    top:"5%",
+    height: '90%',
     justifyContent: 'center',
   },
   modalContainer: {

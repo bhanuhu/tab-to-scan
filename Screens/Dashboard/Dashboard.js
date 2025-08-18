@@ -1,7 +1,16 @@
 import moment from "moment";
 import React, { useState, useEffect, useRef } from "react";
-import { Pressable } from "react-native";
-import { ImageBackground, View, ScrollView, FlatList, Image, Alert } from "react-native";
+import { 
+  Pressable, 
+  Alert, 
+  Platform, 
+  Linking, 
+  ImageBackground, 
+  View, 
+  ScrollView, 
+  FlatList, 
+  Image 
+} from "react-native";
 import {
   Button,
   Card,
@@ -58,6 +67,11 @@ const Dashboard = (props) => {
   });
   
   const [payloadData, setPayloadData] = useState([]);
+  const [categoryImages, setCategoryImages] = useState({
+    scooter: [],
+    motorcycle: [],
+    bike: []
+  });
   
   const categoryImage = {
     scooter: "https://api.quicktagg.com/CustomerUploads/image-3c8744d8-9bd3-493a-bfb4-8c72cd086b18.png",
@@ -72,6 +86,14 @@ const Dashboard = (props) => {
       ...prev,
       [type]: isSelected,
     }));
+    
+    // Initialize images array for this category if it doesn't exist
+    if (isSelected && !categoryImages[type]) {
+      setCategoryImages(prev => ({
+        ...prev,
+        [type]: []
+      }));
+    }
   
     setPayloadData(prev => {
       const updated = [...prev];
@@ -138,59 +160,292 @@ const Dashboard = (props) => {
   
     const [image, setImage] = useState([]);
   
-    const pickImage = async () => {
+  const takePhoto = async () => {
+    try {
+      console.log("1. Starting camera...");
+      
+      // First, check if we have camera permissions
+      console.log("2. Checking camera permissions...");
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          "Permission Required",
+          "Please allow camera access to take photos.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Open Settings", 
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
+        return null;
+      }
+
+      console.log("3. Launching camera...");
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: false,
+        exif: false
+      }) || {};
+
+      console.log("4. Camera result:", JSON.stringify(result, null, 2));
+
+      if (!result || result.canceled) {
+        console.log("5. User cancelled camera");
+        return null;
+      }
+
+      const asset = (result.assets && result.assets[0]) || result;
+      if (!asset || !asset.uri) {
+        console.log("6. No valid photo taken");
+        return null;
+      }
+
+      const photo = {
+        uri: asset.uri,
+        type: asset.mimeType || 'image/jpeg',
+        name: `photo_${Date.now()}.jpg`,
+        width: asset.width,
+        height: asset.height,
+        fileSize: asset.fileSize
+      };
+
+      console.log("7. Photo taken:", photo);
+      return photo;
+
+    } catch (error) {
+      console.error('Error in takePhoto:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      Alert.alert(
+        "Error",
+        `Failed to take photo: ${error.message || 'Unknown error'}`,
+        [{ text: "OK" }]
+      );
+      return null;
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      console.log("1. Starting image picker...");
+      
+      // First, check if we have permissions
+      console.log("2. Checking permissions...");
+      const permissionResult = await ImagePicker.getMediaLibraryPermissionsAsync() || {};
+      const status = permissionResult?.status;
+      
+      if (status !== 'granted') {
+        console.log("3. No permissions, requesting...");
+        const newPermissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync() || {};
+        const newStatus = newPermissionResult?.status;
+        
+        if (newStatus !== 'granted') {
+          console.log("4. Permission denied");
+          Alert.alert(
+            "Permission Required",
+            "Please allow access to your photos to upload images.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { 
+                text: "Open Settings", 
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+          return null;
+        }
+      }
+
+      console.log("5. Launching image library...");
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: false,
+        exif: false,
+        selectionLimit: 1
+      }) || {};
+
+      console.log("6. Image picker result:", JSON.stringify(result, null, 2));
+
+      if (!result || result.canceled) {
+        console.log("7. User cancelled image picker or result is null");
+        return null;
+      }
+
+      const asset = (result.assets && result.assets[0]) || result;
+      if (!asset || !asset.uri) {
+        console.log("8. No valid asset found");
+        return null;
+      }
+
+      const selectedImage = {
+        uri: asset.uri,
+        type: asset.mimeType || 'image/jpeg',
+        name: asset.fileName || (asset.uri ? asset.uri.split('/').pop() : 'photo.jpg') || 'photo.jpg',
+        width: asset.width,
+        height: asset.height,
+        fileSize: asset.fileSize
+      };
+
+      console.log("9. Selected image:", selectedImage);
+      return selectedImage;
+
+    } catch (error) {
+      console.error('Error in pickImage:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      // Try one more time with simpler options
       try {
+        console.log("10. Retrying with simpler options...");
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          aspect: [4, 3],
-          quality: 1,
+          quality: 0.8,
         });
-    
-        if (result.cancelled) {
-          throw new Error('Image selection cancelled');
+
+        if (!result || result.canceled) {
+          console.log("11. User cancelled on retry or result is null");
+          return null;
         }
-        
-        // For Expo Image Picker v2+
-        const asset = result.uri;
+
+        const asset = (result.assets && result.assets[0]) || result;
+        if (!asset || !asset.uri) return null;
+
         return {
-          uri: asset,
-          type: 'image/jpeg',
-          name: 'photo.jpg'
+          uri: asset.uri,
+          type: asset.mimeType || 'image/jpeg',
+          name: asset.fileName || (asset.uri ? asset.uri.split('/').pop() : 'photo.jpg') || 'photo.jpg'
         };
-      } catch (error) {
-        console.error('ImagePicker Error: ', error);
-        throw error;
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+        Alert.alert(
+          "Error",
+          `Failed to pick image: ${error.message || 'Unknown error'}`,
+          [{ text: "OK" }]
+        );
+        return null;
       }
-    };
+    }
+  };
+
+  const showImagePickerOptions = () => {
+    Alert.alert(
+      "Select Image",
+      "Choose an option",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            const photo = await takePhoto();
+            if (photo) {
+              handleImageSelected(photo);
+            }
+          }
+        },
+        {
+          text: "Choose from Gallery",
+          onPress: async () => {
+            const image = await pickImage();
+            if (image) {
+              handleImageSelected(image);
+            }
+          }
+        },
+        {
+          text: "Cancel",
+          style: "cancel"
+        }
+      ]
+    );
+  };
+
+  const handleImageSelected = (selectedImage) => {
+    if (!selectedImage || !selectedImage.uri) {
+      console.log("No valid image selected");
+      return;
+    }
     
-  
+    // If you want to support multiple images
+    setImage(prevImages => [...prevImages, selectedImage]);
     
-    const handleUpload = async () => {
-      if (!image || image.length === 0) {
-        alert("Please select at least one image first.");
+    // If you want to upload immediately
+    // handleUpload(selectedImage);
+  };
+
+  const handleUpload = async (selectedImage = null) => {
+    try {
+      console.log("Starting upload process...");
+      let image = selectedImage;
+      
+      if (!image) {
+        // If no image provided, show picker options
+        showImagePickerOptions();
         return;
       }
-    
-      const formData = new FormData();
-    
-      image.forEach((uri, index) => {
-        formData.append("images", {
-          uri,
-          type: "image/jpeg",
-          name: `upload_${index}.jpg`,
-        });
-      });
-    
-      try {
-        const response = await uploadImage("/upload", formData, token); // use actual route
-        console.log("Upload response", response);
-      } catch (error) {
-        console.error("Upload failed", error);
-      }
-    };
-    
-  
 
+      console.log("Preparing upload for image:", image);
+      
+      if (!image.uri) {
+        console.error("No image URI found");
+        Alert.alert("Error", "No image selected");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: image.uri,
+        type: image.type || 'image/jpeg',
+        name: image.name || `photo_${Date.now()}.jpg`,
+      });
+
+      // Add any additional data
+      if (customerId) formData.append('customerId', customerId);
+      if (branchId) formData.append('branchId', branchId);
+
+      console.log("Uploading image...");
+      const response = await uploadImage("/your-upload-endpoint", formData, token);
+      console.log("Upload response:", response);
+      
+      if (response?.success) {
+        setImage(prevImages => [...prevImages, image]);
+        Alert.alert("Success", "Image uploaded successfully!");
+      } else {
+        throw new Error(response?.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code
+      });
+      Alert.alert(
+        "Upload Failed",
+        error.message || "Failed to upload image. Please try again."
+      );
+    }
+  };
 
   const subCategoryData =
     category === "SCOOTER"
@@ -558,7 +813,7 @@ const Dashboard = (props) => {
         visible={modal.details}
         content={
           !details ? (
-            <View style={{ height: "100%" }}>
+            <View style={{ height: "100%"}}>
               <TextInput
                 mode="flat"
                 style={{ backgroundColor: "rgba(0,0,0,0)" }}
@@ -1532,6 +1787,13 @@ const Dashboard = (props) => {
 
       {!checkIn ? (
         <CustomModal
+          contentContainerStyle={{
+            width: "70%",
+            maxHeight: "40%",
+            height: "40%",
+          }}
+          style={{
+          }}
           visible={modal.checkIn}
           content={
             <View>
@@ -1555,7 +1817,7 @@ const Dashboard = (props) => {
                 }
               //  left={<TextInput.Affix text="+91-" />}
               />
-              {recentVistors.map((item, index) => (
+              {/* {recentVistors.map((item, index) => (
                 <List.Item
                   onPress={() => {
                     setModal({ ...modal, mobile: item.mobile });
@@ -1564,7 +1826,7 @@ const Dashboard = (props) => {
                   title={"+91 " + item.mobile}
                   left={(props) => <List.Icon {...props} icon="history" />}
                 />
-              ))}
+              ))} */}
               <View style={[MyStyles.row, { marginTop: 10 }]}>
                 <Button
                   mode="contained"
@@ -1943,7 +2205,25 @@ const Dashboard = (props) => {
       {modal.uploadNext && (
   {
     yes: (
-     <InterestYes  visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+     <InterestYes  
+       visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} 
+       modal={modal} 
+       setModal={setModal} 
+       payloadData={payloadData} 
+       setPayloadData={setPayloadData} 
+       categoryImages={categoryImages}
+       setCategoryImages={setCategoryImages}
+       token={token} 
+       imageUrl={imageUrl} 
+       serviceUrl={serviceUrl} 
+       setCategory={setCategory} 
+       setUpload={setUpload} 
+       setCheckIn={setCheckIn} 
+       pickImage={pickImage} 
+       handleUpload={handleUpload} 
+       interest={interest} 
+       setInterest={setInterest}
+     />
     ),
     followup: (
      <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'followup'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>

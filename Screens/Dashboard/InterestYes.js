@@ -18,7 +18,7 @@ import { serviceUrl, imageUrl } from "../../Services/Constants";
 import { TouchableOpacity } from "react-native";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from "moment";
-import { Platform } from "react-native";
+import { Platform, Linking } from "react-native";
 import {ActivityIndicator} from "react-native";
 
 const InterestYes = ({
@@ -26,8 +26,8 @@ const InterestYes = ({
   setModal,
   payloadData,
   setPayloadData,
-  image,
-  setImage,
+  categoryImages,
+  setCategoryImages,
   token,
   imageUrl,
   serviceUrl,
@@ -35,16 +35,156 @@ const InterestYes = ({
   setUpload,
   setCheckIn,
   pickImage,
-  handleUpload
+  handleUpload,
+  index = 0,
+  interest
 }) => {
   const [isUploading, setIsUploading] = React.useState(false);
   const isMounted = useRef(true);
+
+  const handleFileUpload = async (file, itemIndex = index) => {
+    if (!file || !file.uri) {
+      console.log('No valid file selected');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      const formData = new FormData();
+      formData.append('files', {
+        uri: file.uri,
+        type: file.mimeType || 'application/octet-stream',
+        name: file.fileName || `file_${Date.now()}`
+      });
+
+      const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
+      console.log('File upload successful:', response);
+      
+      const fileUrl = response?.data?.url || file.uri;
+
+      // Update payload data with file information, keeping it separate from image data
+      setPayloadData(prev => {
+        const updated = [...prev];
+        const currentItem = updated[itemIndex] || {};
+        
+        // Get the current category type
+        const categoryType = currentItem.category_id === '2180' ? 'scooter' : 
+                           currentItem.category_id === '2181' ? 'motorcycle' : 'bike';
+        
+        // Update the payload with file data, preserving existing image data
+        updated[itemIndex] = {
+          ...currentItem,
+          // Store file data separately
+          document_url: fileUrl,
+          file_data: {
+            ...currentItem.file_data,
+            [categoryType]: {
+              url: fileUrl,
+              name: file.fileName || 'document',
+              type: file.mimeType || 'application/octet-stream',
+              uploaded_at: new Date().toISOString()
+            }
+          },
+          // Keep existing image_path data if it exists
+          image_path: currentItem.image_path || {}
+        };
+        
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      Alert.alert('Error', 'Failed to upload file');
+    } finally {
+      if (isMounted.current) {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  const handleImageUpload = async (image, itemIndex = index) => {
+    if (!image || !image.uri) {
+      console.log('No valid image selected');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      // Upload the image to the server first
+      const formData = new FormData();
+      formData.append('files', {
+        uri: image.uri,
+        type: image.mimeType || 'image/jpeg',
+        name: image.fileName || `image_${Date.now()}.jpg`
+      });
+
+      const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
+      console.log('Upload response:', response);
+      
+      // Safely extract the URL from the response
+      const uploadedImageUrl = response?.data?.url || response?.url || image.uri;
+      
+      if (!uploadedImageUrl) {
+        throw new Error('No URL returned from server');
+      }
+      
+      // Get the current category type
+      const currentItem = payloadData[itemIndex] || {};
+      const categoryType = currentItem.category_id === '2180' ? 'scooter' : 
+                         currentItem.category_id === '2181' ? 'motorcycle' : 'bike';
+      
+      // Update the category-specific images with the uploaded URL
+      const updatedImages = [...(categoryImages[categoryType] || []), uploadedImageUrl];
+      
+      // Update the category images state
+      setCategoryImages(prev => ({
+        ...prev,
+        [categoryType]: updatedImages
+      }));
+      
+      // Update the payload data with the new image, preserving file data
+      setPayloadData(prev => {
+        const updated = [...prev];
+        const currentItem = updated[itemIndex] || {};
+        
+        updated[itemIndex] = {
+          ...currentItem,
+          // Update image data
+          image_path: {
+            ...currentItem.image_path,
+            [categoryType]: {
+              urls: updatedImages,
+              main: uploadedImageUrl, // Set the latest as main
+              last_updated: new Date().toISOString()
+            },
+            // Maintain backward compatibility
+            add: updatedImages,
+            choose: uploadedImageUrl,
+            url: uploadedImageUrl
+          },
+          // Preserve existing file data
+          file_data: currentItem.file_data || {}
+        };
+        
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', error.message || 'Failed to upload image');
+    } finally {
+      if (isMounted.current) {
+        setIsUploading(false);
+      }
+    }
+  };
 
   React.useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
+
   return (
     <CustomModal
         visible={modal.uploadNext}
@@ -52,7 +192,7 @@ const InterestYes = ({
           <View style={{ height: "100%" }}>
             <ScrollView>
               <View style={[MyStyles.row, { justifyContent: "space-around", flexWrap: 'wrap' }]}>
-  {payloadData.map((payload, index) => (
+  {(payloadData || []).map((payload, index) => (
     <View key={index} style={{ flex: 0.30, marginBottom: 20, overflowX: "hidden"}}>
       <Text
         style={{
@@ -85,181 +225,292 @@ const InterestYes = ({
         textColor="#fff"
         onPress={async () => {
           try {
-            const image = await pickImage();
-            console.log("image", image);
+            // Check permissions first
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             
-            const formData = new FormData();
-            formData.append("files", {
-              uri: image.uri,
-              name: "photo.jpg",
-              type: "image/jpeg"
-            });
-            console.log("FormData ready for upload:", formData);
-        
-            const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
-            setPayloadData(prev => {
-              const updated = [...prev];
-              updated[index] = {
-                ...updated[index],
-                image_path: {
-                  ...updated[index]?.image_path,
-                  choose: image?.uri,
-                  url: response?.data?.url || image?.uri
+            if (status !== 'granted') {
+              Alert.alert(
+                'Permission Required',
+                'Please allow access to your files to upload documents.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Open Settings', 
+                    onPress: () => {
+                      if (Platform.OS === 'ios') {
+                        Linking.openURL('app-settings:');
+                      } else {
+                        Linking.openSettings();
+                      }
+                    }
+                  }
+                ]
+              );
+              return;
+            }
+
+            // Show action sheet for file source selection
+            Alert.alert(
+              'Select File Source',
+              'Choose how to add a file',
+              [
+                {
+                  text: 'Take Photo',
+                  onPress: async () => {
+                    try {
+                      const result = await ImagePicker.launchCameraAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.All,
+                        allowsEditing: false,
+                        aspect: [4, 3],
+                        quality: 0.8,
+                        base64: false,
+                        exif: false
+                      });
+
+                      if (!result.canceled && result.assets?.[0]) {
+                        // For camera capture, use handleImageUpload
+                        await handleImageUpload(result.assets[0]);
+                      }
+                    } catch (error) {
+                      console.error('Error taking photo:', error);
+                      Alert.alert('Error', 'Failed to take photo');
+                    }
+                  }
+                },
+                {
+                  text: 'Choose from Files',
+                  onPress: async () => {
+                    try {
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.All,
+                        allowsEditing: false,
+                        quality: 0.8,
+                        base64: false,
+                        exif: false,
+                        selectionLimit: 1
+                      });
+
+                      if (!result.canceled && result.assets?.[0]) {
+                        // For camera capture, use handleImageUpload
+                        await handleImageUpload(result.assets[0]);
+                      }
+                    } catch (error) {
+                      console.error('Error picking file:', error);
+                      Alert.alert('Error', 'Failed to pick file');
+                    }
+                  }
+                },
+                {
+                  text: 'Cancel',
+                  style: 'cancel'
                 }
-              };
-              return updated;
-            });
+              ]
+            );
           } catch (error) {
-            console.error("Error in image upload:", error);
-            // Handle error appropriately
+            console.error('Error in file selection:', error);
+            Alert.alert('Error', 'Failed to select file');
           }
         }}
-    >
-      Choose Files
-    </Button>
+        disabled={isUploading}
+      >
+        {isUploading ? 'Uploading...' : 'Choose Files'}
+      </Button>
 
-    {/* Dynamic Image Below */}
-    <Image
-  source={{
-    uri:  `${payloadData[index]?.image_path?.choose
-      ? payloadData[index].image_path.choose
-      : payloadData[index]?.image_path?.url}`
-  }}
-  style={{
-    height: 130,
-    width: "100%",
-    marginVertical: 10,
-    resizeMode: "stretch",
-  }}
-/>
+      {/* Main Image Preview */}
+      <Image
+        source={{
+          uri: `${payloadData[index]?.image_path?.choose
+            ? payloadData[index].image_path.choose
+            : payloadData[index]?.image_path?.url}`
+        }}
+        style={{
+          height: 130,
+          width: "100%",
+          marginVertical: 10,
+          resizeMode: "stretch",
+        }}
+      />
+      
+      {/* Additional Images */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
+      >
+        {categoryImages[payloadData[index]?.category_id === '2180' ? 'scooter' : 
+                       payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike']
+                       ?.filter(uri => uri !== payloadData[index]?.image_path?.choose) // Don't show the main image in the list
+                       .map((uri, idx) => (
+          <View
+            key={idx}
+            style={{
+              marginRight: 10,
+              borderRadius: 8,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "#ccc",
+              position: "relative",
+            }}
+          >
+            <Image
+              source={{ uri }}
+              style={{
+                height: 100,
+                width: 100,
+                resizeMode: "cover",
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => {
+                const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
+                                  payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
+                setCategoryImages(prev => ({
+                  ...prev,
+                  [categoryType]: prev[categoryType].filter((_, i) => i !== idx)
+                }));
+              }}
+              style={{
+                position: "absolute",
+                top: 5,
+                right: 5,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 12,
+                width: 24,
+                height: 24,
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1,
+              }}
+            >
+              <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
 
-{/* Add Images Button */}
-<View style={MyStyles.row}>
-<Button
-  mode="contained"
-  compact
-  style={{ color: "white" }}
-  onPress={async () => {
-    setIsUploading(true);
-    try {
-      const image = await pickImage();
-      if (image) {
-        // Update your images state with the new image
-        setImage(prevImages => [...prevImages, image.uri]);
-        
-        // If you need to upload immediately:
-        const formData = new FormData();
-        formData.append('files', image);
-        
-        const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
-        console.log('Upload successful:', response);
-        
-        // Update your payload with the server response
-        setPayloadData(prev => {
-          const updated = [...prev];
-          updated[index] = {
-            ...updated[index],
-            image_path: {
-              ...updated[index]?.image_path,
-              add: [...(updated[index]?.image_path?.add || []), response.data?.url || image.uri]
+      {/* Add Images Button */}
+      <View style={MyStyles.row}>
+        <Button
+          mode="contained"
+          compact
+          style={{ backgroundColor: "#1abc9c" }}
+          onPress={async () => {
+            try {
+              // Check permissions first
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              
+              if (status !== 'granted') {
+                Alert.alert(
+                  'Permission Required',
+                  'Please allow access to your photos to upload images.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Open Settings', 
+                      onPress: () => {
+                        if (Platform.OS === 'ios') {
+                          Linking.openURL('app-settings:');
+                        } else {
+                          Linking.openSettings();
+                        }
+                      }
+                    }
+                  ]
+                );
+                return;
+              }
+
+              // Show action sheet for image source selection
+              Alert.alert(
+                'Select Image Source',
+                'Choose how to add an image',
+                [
+                  {
+                    text: 'Take Photo',
+                    onPress: async () => {
+                      try {
+                        const result = await ImagePicker.launchCameraAsync({
+                          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                          allowsEditing: true,
+                          aspect: [4, 3],
+                          quality: 0.8,
+                          base64: false,
+                          exif: false
+                        });
+
+                        if (!result.canceled && result.assets?.[0]) {
+                          await handleImageUpload(result.assets[0]);
+                        }
+                      } catch (error) {
+                        console.error('Error taking photo:', error);
+                        Alert.alert('Error', 'Failed to take photo');
+                      }
+                    }
+                  },
+                  {
+                    text: 'Choose from Gallery',
+                    onPress: async () => {
+                      try {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                          allowsEditing: true,
+                          aspect: [4, 3],
+                          quality: 0.8,
+                          base64: false,
+                          exif: false,
+                          selectionLimit: 1
+                        });
+
+                        if (!result.canceled && result.assets?.[0]) {
+                          await handleImageUpload(result.assets[0]);
+                        }
+                      } catch (error) {
+                        console.error('Error picking image:', error);
+                        Alert.alert('Error', 'Failed to pick image');
+                      }
+                    }
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel'
+                  }
+                ]
+              );
+            } catch (error) {
+              console.error('Error in image selection:', error);
+              Alert.alert('Error', 'Failed to select image');
             }
-          };
-          return updated;
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      if (error.message !== 'Image selection cancelled') {
-        Alert.alert('Error', 'Failed to process image. Please try again.');
-      }
-    } finally {
-      if (isMounted.current) {
-        setIsUploading(false);
-      }
-    }
-  }}
-  color="#1abc9c"
-  disabled={isUploading}
->
-  {isUploading ? (
-    <ActivityIndicator color="#fff" />
-  ) : (
-    <Text style={{color: "white"}}>ADD IMAGES</Text>
-  )}
-</Button>
-    <View style={{ marginLeft: 4, alignItems: "center", justifyContent: "center"}}>
-  <Button
-    icon={({ color, size }) => (
-      <Icon name="upload" size={16} color="#fff"/>
-    )}
-    style={{
-      backgroundColor: "#3699fe",
-      width: 40,
-      minWidth: 0,
-      alignSelf: "center",
-      paddingLeft: 10, 
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-    contentStyle={{ alignItems: "center", justifyContent: "center" }}
-   
-    textColor="#fff"
-    onPress={handleUpload}
-  />
-</View>
-</View>
-<ScrollView
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
->
-{image.map((uri, idx) => (
-  <View
-    key={idx}
-    style={{
-      marginRight: 10,
-      borderRadius: 8,
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: "#ccc",
-      position: "relative",
-    }}
-  >
-    <Image
-      source={{ uri }}
-      style={{
-        height: 130,
-        width: 130,
-        resizeMode: "cover",
-      }}
-    />
+          }}
+          color="#1abc9c"
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{color: "white"}}>ADD IMAGES</Text>
+          )}
+        </Button>
+        <View style={{ marginLeft: 4, alignItems: "center", justifyContent: "center"}}>
+          <Button
+            icon={({ color, size }) => (
+              <Icon name="upload" size={16} color="#fff"/>
+            )}
+            style={{
+              backgroundColor: "#3699fe",
+              width: 40,
+              minWidth: 0,
+              alignSelf: "center",
+              paddingLeft: 10, 
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            contentStyle={{ alignItems: "center", justifyContent: "center" }}
+            textColor="#fff"
+            onPress={handleUpload}
+          />
+        </View>
+      </View>
 
-    <TouchableOpacity
-      onPress={() => {
-        // Remove image at index `idx`
-        const newImages = [...image];
-        newImages.splice(idx, 1);
-        setImage(newImages);
-      }}
-      style={{
-        position: "absolute",
-        top: 5,
-        right: 5,
-        backgroundColor: "rgba(0,0,0,0.6)",
-        borderRadius: 12,
-        width: 24,
-        height: 24,
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1,
-      }}
-    >
-      <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
-    </TouchableOpacity>
-  </View>
-))}
-
-</ScrollView>
 
       {/* SKU Input */}
       <TextInput
@@ -427,7 +678,12 @@ const InterestYes = ({
                     motorcycle: false,
                     bike: false,
                   });
-                  setImage([]);
+                  const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
+                                     payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
+                  setCategoryImages(prev => ({
+                    ...prev,
+                    [categoryType]: []
+                  }));
                 }}
                 style={MyStyles.button}
               >
@@ -506,7 +762,12 @@ const InterestYes = ({
                       motorcycle: false,
                       bike: false,
                     });
-                  setImage([]);
+                  const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
+                                     payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
+                  setCategoryImages(prev => ({
+                    ...prev,
+                    [categoryType]: []
+                  }));
 
               
                   } else {
