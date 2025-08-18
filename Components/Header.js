@@ -25,7 +25,7 @@ const Header = ({ logoPath, right }) => {
       />
 
       <Image
-        style={{ resizeMode: "contain", width: 200, height: 150 }}
+        style={{ resizeMode: "contain", width: 100, height: 150 }}
         source={
           logoPath
             ? { uri: "https://api.quicktagg.com/BranchLogo/" + logoPath }
