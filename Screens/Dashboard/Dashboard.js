@@ -1789,7 +1789,7 @@ const Dashboard = (props) => {
         <CustomModal
           contentContainerStyle={{
             width: "70%",
-            maxHeight: "40%",
+            maxHeight: 140,
             height: "40%",
           }}
           style={{
@@ -2226,7 +2226,23 @@ const Dashboard = (props) => {
      />
     ),
     followup: (
-     <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'followup'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+     <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} 
+     modal={modal} 
+     setModal={setModal} 
+     payloadData={payloadData} 
+     setPayloadData={setPayloadData} 
+     categoryImages={categoryImages}
+     setCategoryImages={setCategoryImages}
+     token={token} 
+     imageUrl={imageUrl} 
+     serviceUrl={serviceUrl} 
+     setCategory={setCategory} 
+     setUpload={setUpload} 
+     setCheckIn={setCheckIn} 
+     pickImage={pickImage} 
+     handleUpload={handleUpload} 
+     interest={interest} 
+     setInterest={setInterest}/>
     ),
     requirement: (
      <InterestRequirement visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>

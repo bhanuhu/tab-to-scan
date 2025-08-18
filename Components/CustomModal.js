@@ -14,14 +14,15 @@ const CustomModal = ({ visible, content, onDismiss, contentContainerStyle, style
         contentContainerStyle={ {
           backgroundColor: contentContainerStyle?.backgroundColor || "rgba(255,255,255,0.85)",
           width: contentContainerStyle?.width || "70%",
-          maxHeight: contentContainerStyle?.maxHeight || "90%",
+          maxHeight: contentContainerStyle?.maxHeight || 300,
           height: contentContainerStyle?.height || "90%",
-          marginLeft: contentContainerStyle?.marginLeft || "auto",
-          marginBottom: contentContainerStyle?.marginBottom || "auto",
-          marginRight: contentContainerStyle?.marginRight || "auto",
+          alignSelf: "center",
+          // marginLeft: contentContainerStyle?.marginLeft || "auto",
+          // marginBottom: contentContainerStyle?.marginBottom || "auto",
+          // marginRight: contentContainerStyle?.marginRight || "auto",
           borderRadius: contentContainerStyle?.borderRadius || 2,
-          paddingHorizontal: contentContainerStyle?.paddingHorizontal || 5,
-          paddingVertical: contentContainerStyle?.paddingVertical || 5,
+          // paddingHorizontal: contentContainerStyle?.paddingHorizontal || 5,
+          // paddingVertical: contentContainerStyle?.paddingVertical || 5,
 
         }}
       >
@@ -30,8 +31,10 @@ const CustomModal = ({ visible, content, onDismiss, contentContainerStyle, style
             borderWidth: style?.borderWidth || 1,
             borderColor: style?.borderColor || "#555",
             height: style?.height || "auto",
-            paddingHorizontal: style?.paddingHorizontal || 10,
+            paddingHorizontal: style?.paddingHorizontal || 5,
             paddingVertical: style?.paddingVertical || 5,
+            marginHorizontal: style?.marginHorizontal || 5,
+            marginVertical: style?.marginVertical || 5,
           }}
         >
           {content}

@@ -42,142 +42,98 @@ const InterestYes = ({
   const [isUploading, setIsUploading] = React.useState(false);
   const isMounted = useRef(true);
 
-  const handleFileUpload = async (file, itemIndex = index) => {
-    if (!file || !file.uri) {
-      console.log('No valid file selected');
-      return;
-    }
 
-    try {
-      setIsUploading(true);
-      
-      const formData = new FormData();
-      formData.append('files', {
-        uri: file.uri,
-        type: file.mimeType || 'application/octet-stream',
-        name: file.fileName || `file_${Date.now()}`
-      });
-
-      const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
-      console.log('File upload successful:', response);
-      
-      const fileUrl = response?.data?.url || file.uri;
-
-      // Update payload data with file information, keeping it separate from image data
-      setPayloadData(prev => {
-        const updated = [...prev];
-        const currentItem = updated[itemIndex] || {};
-        
-        // Get the current category type
-        const categoryType = currentItem.category_id === '2180' ? 'scooter' : 
-                           currentItem.category_id === '2181' ? 'motorcycle' : 'bike';
-        
-        // Update the payload with file data, preserving existing image data
-        updated[itemIndex] = {
-          ...currentItem,
-          // Store file data separately
-          document_url: fileUrl,
-          file_data: {
-            ...currentItem.file_data,
-            [categoryType]: {
-              url: fileUrl,
-              name: file.fileName || 'document',
-              type: file.mimeType || 'application/octet-stream',
-              uploaded_at: new Date().toISOString()
-            }
-          },
-          // Keep existing image_path data if it exists
-          image_path: currentItem.image_path || {}
-        };
-        
-        return updated;
-      });
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      Alert.alert('Error', 'Failed to upload file');
-    } finally {
-      if (isMounted.current) {
-        setIsUploading(false);
-      }
-    }
-  };
-
-  const handleImageUpload = async (image, itemIndex = index) => {
+  const handleImageUpload = async (image, itemIndex = index, categoryType) => {
     if (!image || !image.uri) {
       console.log('No valid image selected');
       return;
     }
-
+  
+    const currentIndex = typeof index === 'number' ? index : 0;
+  
     try {
       setIsUploading(true);
-      
-      // Upload the image to the server first
+  
+      const imageType = image.mimeType || 'image/jpeg';
       const formData = new FormData();
       formData.append('files', {
         uri: image.uri,
-        type: image.mimeType || 'image/jpeg',
+        type: imageType,
         name: image.fileName || `image_${Date.now()}.jpg`
       });
-
+  
+      console.log('📤 Uploading image:', {
+        payloadIndex: itemIndex,
+        imageType,
+        uri: image.uri,
+        fileName: image.fileName || 'generated_name.jpg',
+        size: image.fileSize ? `${Math.round(image.fileSize / 1024)}KB` : 'unknown'
+      });
+  
       const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
-      console.log('Upload response:', response);
-      
-      // Safely extract the URL from the response
+  
       const uploadedImageUrl = response?.data?.url || response?.url || image.uri;
-      
-      if (!uploadedImageUrl) {
-        throw new Error('No URL returned from server');
+      if (!uploadedImageUrl) throw new Error('No URL returned from server');
+  
+      const itemIndexToUse = typeof itemIndex === 'number' ? itemIndex : currentIndex;
+      const currentItem = { ...payloadData[itemIndexToUse] } || {};
+  
+      let finalCategoryType = image._category || 
+                              currentItem.product_category?.toLowerCase() || 
+                              (currentItem.category_id === '2180' ? 'scooter' : 
+                               currentItem.category_id === '2181' ? 'motorcycle' : 'bike');
+  
+      console.log('🎯 Determined category for upload:', finalCategoryType);
+  
+      // Ensure image_path exists
+      currentItem.image_path = currentItem.image_path || {};
+  
+      // Conditionally initialize category array
+      if (!currentItem.image_path[finalCategoryType]) {
+        currentItem.image_path[finalCategoryType] = { urls: [], main: null, last_updated: null };
       }
-      
-      // Get the current category type
-      const currentItem = payloadData[itemIndex] || {};
-      const categoryType = currentItem.category_id === '2180' ? 'scooter' : 
-                         currentItem.category_id === '2181' ? 'motorcycle' : 'bike';
-      
-      // Update the category-specific images with the uploaded URL
-      const updatedImages = [...(categoryImages[categoryType] || []), uploadedImageUrl];
-      
-      // Update the category images state
-      setCategoryImages(prev => ({
-        ...prev,
-        [categoryType]: updatedImages
-      }));
-      
-      // Update the payload data with the new image, preserving file data
+  
+      // Add image URL to the category-specific array
+      currentItem.image_path[finalCategoryType].urls = [
+        ...(currentItem.image_path[finalCategoryType].urls || []),
+        uploadedImageUrl
+      ];
+  
+      // Update choose/add based on categoryType
+      if (categoryType === 'choose') {
+        currentItem.image_path.choose = uploadedImageUrl;
+      } else {
+        currentItem.image_path.add = [
+          ...(currentItem.image_path.add || []),
+          uploadedImageUrl
+        ];
+      }
+  
+      currentItem.image_path[finalCategoryType].main = uploadedImageUrl;
+      currentItem.image_path[finalCategoryType].last_updated = new Date().toISOString();
+  
+      // Update the payload data state
       setPayloadData(prev => {
         const updated = [...prev];
-        const currentItem = updated[itemIndex] || {};
-        
-        updated[itemIndex] = {
-          ...currentItem,
-          // Update image data
-          image_path: {
-            ...currentItem.image_path,
-            [categoryType]: {
-              urls: updatedImages,
-              main: uploadedImageUrl, // Set the latest as main
-              last_updated: new Date().toISOString()
-            },
-            // Maintain backward compatibility
-            add: updatedImages,
-            choose: uploadedImageUrl,
-            url: uploadedImageUrl
-          },
-          // Preserve existing file data
-          file_data: currentItem.file_data || {}
-        };
-        
+        updated[itemIndexToUse] = currentItem;
+        console.log('🚀 Updated Payload Data:', updated[itemIndexToUse]);
         return updated;
       });
+  
+      // Optionally update categoryImages state
+      setCategoryImages(prev => ({
+        ...prev,
+        [finalCategoryType]: [...(prev[finalCategoryType] || []), uploadedImageUrl]
+      }));
+  
     } catch (error) {
       console.error('Error uploading image:', error);
       Alert.alert('Error', error.message || 'Failed to upload image');
     } finally {
-      if (isMounted.current) {
-        setIsUploading(false);
-      }
+      if (isMounted.current) setIsUploading(false);
     }
   };
+  
 
   React.useEffect(() => {
     return () => {
@@ -188,6 +144,7 @@ const InterestYes = ({
   return (
     <CustomModal
         visible={modal.uploadNext}
+        contentContainerStyle={{ maxHeight: 600 }}
         content={
           <View style={{ height: "100%" }}>
             <ScrollView>
@@ -269,7 +226,7 @@ const InterestYes = ({
 
                       if (!result.canceled && result.assets?.[0]) {
                         // For camera capture, use handleImageUpload
-                        await handleImageUpload(result.assets[0]);
+                        await handleImageUpload(result.assets[0],index,"choose");
                       }
                     } catch (error) {
                       console.error('Error taking photo:', error);
@@ -283,7 +240,6 @@ const InterestYes = ({
                     try {
                       const result = await ImagePicker.launchImageLibraryAsync({
                         mediaTypes: ImagePicker.MediaTypeOptions.All,
-                        allowsEditing: false,
                         quality: 0.8,
                         base64: false,
                         exif: false,
@@ -292,7 +248,7 @@ const InterestYes = ({
 
                       if (!result.canceled && result.assets?.[0]) {
                         // For camera capture, use handleImageUpload
-                        await handleImageUpload(result.assets[0]);
+                        await handleImageUpload(result.assets[0],index,"choose");
                       }
                     } catch (error) {
                       console.error('Error picking file:', error);
@@ -439,7 +395,7 @@ const InterestYes = ({
                         });
 
                         if (!result.canceled && result.assets?.[0]) {
-                          await handleImageUpload(result.assets[0]);
+                          await handleImageUpload(result.assets[0],index,"add");
                         }
                       } catch (error) {
                         console.error('Error taking photo:', error);
@@ -462,7 +418,7 @@ const InterestYes = ({
                         });
 
                         if (!result.canceled && result.assets?.[0]) {
-                          await handleImageUpload(result.assets[0]);
+                          await handleImageUpload(result.assets[0],index,"add");
                         }
                       } catch (error) {
                         console.error('Error picking image:', error);

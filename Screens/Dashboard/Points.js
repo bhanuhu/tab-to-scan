@@ -250,10 +250,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     margin: 0,
     padding: 0,
-    bottom:"5%",
-    top:"5%",
-    height: '90%',
-    justifyContent: 'center',
+    height: '100%',
+    maxHeight: 400,
   },
   modalContainer: {
     backgroundColor: 'white',
