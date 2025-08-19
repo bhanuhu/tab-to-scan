@@ -1290,7 +1290,7 @@ const Dashboard = (props) => {
                         <ScrollView>
                         <View style={MyStyles.wrapper}>
                             <Text style={{ fontWeight: "bold" }}>Product Category</Text>
-                            <Text style={MyStyles.text}>{item.product_category ? item.product_category : "N/A"}</Text>
+                            <Text style={MyStyles.text}>{item.product_category ? item.category_name : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
                             <Text style={{ fontWeight: "bold" }}>Product Name</Text>
