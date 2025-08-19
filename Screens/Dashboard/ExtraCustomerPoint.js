@@ -28,6 +28,7 @@ const ExtraCustomerPoint = ({
   redeemPoints,
   expiredPoints,
   staffList,
+  branchId,
 }) => {
   const [redeemingPoints, setRedeemingPoints] = useState('');
   const [staffName, setStaffName] = useState('');
@@ -47,6 +48,7 @@ const ExtraCustomerPoint = ({
       extra_point: redeemingPoints,
       remark: remark,
       staff_name: staffName,
+      branch_id: branchId,
     };
   
     const endpoint = 'customervisit/insert/extraPoint';
@@ -54,6 +56,7 @@ const ExtraCustomerPoint = ({
     postRequest(endpoint, payload, token)
       .then((response) => {
         alert("Add Extra Point Successfully");
+        onClose();
       })
       .catch((error) => {
         console.error('Request failed:', error);

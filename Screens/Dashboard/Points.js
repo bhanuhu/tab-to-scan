@@ -31,6 +31,7 @@ const Points = ({
   cusomerId,
   token,
   staffList,
+  branchId,
 }) => {
   const [redeemingPoints, setRedeemingPoints] = useState('');
   const [staffName, setStaffName] = useState('');
@@ -50,6 +51,7 @@ const Points = ({
         redeemPoint: redeemingPoints,
         remark: remark,
         staff_name: staffName,
+        branch_id: branchId,
       };
     
       const endpoint = 'customervisit/insertPointRedeem02';
@@ -58,10 +60,12 @@ const Points = ({
         .then((response) => {
           // handle success UI here
           alert("Add Extra Point Successfully");
+          onClose();
         })
         .catch((error) => {
           console.error('Request failed:', error);
           // handle error UI here
+          
         });
     };
 

@@ -7,7 +7,7 @@ import Points from './Points';
 import ExtraCustomerPoint from './ExtraCustomerPoint';
 import CustomModal from '../../Components/CustomModal';
 
-const RedeemModal = ({ redeem, points, voucherList, visible, onClose, redeemPoints, expiredPoints,token ,staffList}) => {
+const RedeemModal = ({ redeem, points, voucherList, visible, onClose, redeemPoints, expiredPoints,token ,staffList,branchId}) => {
     const [visibleVoucher, setVisibleVoucher] = React.useState(false);
     const [visiblePoints, setVisiblePoints] = React.useState(false);
     const [visibleExtra, setVisibleExtra] = React.useState(false);
@@ -122,9 +122,9 @@ const RedeemModal = ({ redeem, points, voucherList, visible, onClose, redeemPoin
           </View>
     </View>
   </Modal>
-    <Points staffList={staffList} visible={visiblePoints} cusomerId={voucherList[0]?.customer_id} token={token} expiredPoints={expiredPoints} redeemPoints={redeemPoints} data={points} onClose={() => {setVisiblePoints(false); onClose()}} onBack={() => {setVisiblePoints(false)}} totalPoints={points[0]?.total_points} name={voucherList[0]?.full_name} mobile={voucherList[0]?.mobile} />
+    <Points branchId={branchId} staffList={staffList} visible={visiblePoints} cusomerId={voucherList[0]?.customer_id} token={token} expiredPoints={expiredPoints} redeemPoints={redeemPoints} data={points} onClose={() => {setVisiblePoints(false); onClose()}} onBack={() => {setVisiblePoints(false)}} totalPoints={points[0]?.total_points} name={voucherList[0]?.full_name} mobile={voucherList[0]?.mobile} />
   <RedeemVoucher visible={visibleVoucher} totalPoints={points[0]?.total_points} redeem={redeem} customer={{name:voucherList[0]?.full_name,phone:voucherList[0]?.mobile,points:points[0]?.total_points}} onBack={() => {setVisibleVoucher(false)}} onClose={() => {setVisibleVoucher(false); onClose()}} />
-    <ExtraCustomerPoint staffList={staffList} token={token} cusomerId={voucherList[0]?.customer_id} visible={visibleExtra} redeem={redeem} name={voucherList[0]?.full_name} mobile={voucherList[0]?.mobile} totalPoints={points[0]?.total_points} onClose={() => {setVisibleExtra(false); onClose()}} onBack={() => {setVisibleExtra(false)}}/>
+    <ExtraCustomerPoint branchId={branchId} staffList={staffList} token={token} cusomerId={voucherList[0]?.customer_id} visible={visibleExtra} redeem={redeem} name={voucherList[0]?.full_name} mobile={voucherList[0]?.mobile} totalPoints={points[0]?.total_points} onClose={() => {setVisibleExtra(false); onClose()}} onBack={() => {setVisibleExtra(false)}}/>
 </Portal>
 
   );

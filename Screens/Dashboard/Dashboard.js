@@ -51,50 +51,107 @@ const Dashboard = (props) => {
   const { branchId, branchName, logoPath, token } = props.loginDetails;
   const imageRef = useRef(null);
   // const [category, setCategory] = useState({
-  //   scooter: false,
-  //   motorcycle: true,
-  // });
-  const CATEGORY_IDS = {
-    scooter: '2180',
-    motorcycle: '2181',
-    bike: '2182',
-  };
-  
-  const [category, setCategory] = useState({
-    scooter: false,
-    motorcycle: false,
-    bike: false,
-  });
-  
+  const [selectedCategories, setSelectedCategories] = useState({});
   const [payloadData, setPayloadData] = useState([]);
-  const [categoryImages, setCategoryImages] = useState({
-    scooter: [],
-    motorcycle: [],
-    bike: []
-  });
-  
-  const categoryImage = {
-    scooter: "https://api.quicktagg.com/CustomerUploads/image-3c8744d8-9bd3-493a-bfb4-8c72cd086b18.png",
-    motorcycle: "https://api.quicktagg.com/CustomerUploads/image-4301b3d1-b65e-483d-a1c2-470f005e9a7c.jpg",
-    bike: "https://api.quicktagg.com/CustomerUploads/image-4301b3d1-b65e-483d-a1c2-470f005e9a7c.jpg",
+  const [categoryImages, setCategoryImages] = useState({});
+  const fetchCategoryImages = async (categoryId) => {
+    try {
+      const response = await postRequest('masters/product/category/web-browse/', { category_id: categoryId }, token);
+      console.log("Category images response:", response);
+      if (response?.Data && Array.isArray(response.Data)) {
+        const categoryImage = response.Data.find(item => 
+          item.category_id.toString() === categoryId.toString()
+        );
+        
+        if (categoryImage) {
+          const imageUrl = categoryImage.image_path 
+            ? `${categoryImage.url_image}${categoryImage.image_path}`
+            : null;
+            
+          // Update category images state
+          setCategoryImages(prev => ({
+            ...prev,
+            [categoryId]: imageUrl ? [{
+              uri: imageUrl,
+              id: categoryImage.category_id,
+              bannerUrl: categoryImage.banner_path 
+                ? `${categoryImage.url_banner}${categoryImage.banner_path}`
+                : null
+            }] : []
+          }));
+          
+          // Update payload data with the category image URL
+          setPayloadData(prev => {
+            return prev.map(item => {
+              if (item.category_id === categoryId) {
+                return {
+                  ...item,
+                  image_path: {
+                    ...item.image_path,
+                    url: imageUrl || ''
+                  }
+                };
+              }
+              return item;
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching category images:', error);
+    }
   };
-  const toggleCategory = (type) => {
-    const isSelected = !category[type];
-    const categoryId = CATEGORY_IDS[type];
-  
-    setCategory(prev => ({
+
+  const toggleCategory = async (categoryId, categoryName) => {
+    const isSelected = !selectedCategories[categoryId];
+    
+    setSelectedCategories(prev => ({
       ...prev,
-      [type]: isSelected,
+      [categoryId]: isSelected
     }));
     
+    // Set selected category for subcategory fetching
+    if (isSelected) {
+      setSelectedCategoryId(categoryId);
+      
+      // Fetch subcategories if not already loaded
+      if (!subCategories[categoryId]) {
+        try {
+          const [subCatResponse] = await Promise.all([
+            postRequest('masters/category/all_sub_category', { category_id: categoryId }, token),
+            fetchCategoryImages(categoryId) // Fetch images in parallel
+          ]);
+          
+          console.log("Subcategories response:", subCatResponse);
+          if (subCatResponse?.status === 200 && subCatResponse?.data) {
+            console.log("Subcategories:", subCatResponse.data);
+            setSubCategories(prev => ({
+              ...prev,
+              [categoryId]: subCatResponse.data
+                .filter(item => item.category_id.toString() === categoryId.toString())
+                .map(item => ({
+                  label: item.subcategory_name,
+                  value: item.subcategory_id.toString()
+                }))
+            }));
+          }
+        } catch (error) {
+          console.error('Error in category data fetch:', error);
+        }
+      } else {
+        // If subcategories are already loaded, just fetch images
+        fetchCategoryImages(categoryId);
+      }
+    }
+    
     // Initialize images array for this category if it doesn't exist
-    if (isSelected && !categoryImages[type]) {
+    if (isSelected && !categoryImages[categoryId]) {
       setCategoryImages(prev => ({
         ...prev,
-        [type]: []
+        [categoryId]: []
       }));
     }
-  
+    
     setPayloadData(prev => {
       const updated = [...prev];
   
@@ -103,22 +160,22 @@ const Dashboard = (props) => {
         const newPayload = {
           tran_id: 0,
           customer_id: upload?.customer_id || 0,
-          mobile: upload?.mobile || '',
           full_name: upload?.full_name || '',
           remarks: upload?.remarks || '',
           sku: upload?.sku || '',
-          image_path: {"choose":"", "add":[], "fetchSku":"", "url":categoryImage[type]},
+          image_path: {"choose":"", "add":[], "fetchSku":"", "url":""},
           appointment_date: upload?.appointment_date || '',
           payment: upload?.payment || '',
           sub_category: upload?.sub_category || '',
           interest: upload?.interest || 'Yes',
           staff_id: upload?.staff_id || '1069',
-          category_id: categoryId? categoryId : '',
+          category_id: categoryId,
+          category_name: categoryName
         };
   
         return [...updated, newPayload];
       } else {
-        // OPTIONAL: Remove payloads for this category
+        // Remove payloads for this category
         return updated.filter(item => item.category_id !== categoryId);
       }
     });
@@ -447,16 +504,7 @@ const Dashboard = (props) => {
     }
   };
 
-  const subCategoryData =
-    category === "SCOOTER"
-      ? [
-        { label: "JUPITER", value: "JUPITER" },
-        { label: "PEP", value: "PEP" },
-      ]
-      : [
-        { label: "APACHE", value: "APACHE" },
-        { label: "SPORTS", value: "SPORTS" },
-      ];
+  const subCategoryData = selectedCategoryId ? (subCategories[selectedCategoryId] || []) : [];
  
 
   const [join, setJoin] = useState({
@@ -493,6 +541,8 @@ const Dashboard = (props) => {
   });
   const [staffList, setStaffList] = useState([]);
   const [categoryList, setCategoryList] = useState([]);
+  const [subCategories, setSubCategories] = useState({});
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [areaList, setAreaList] = useState([]);
   const [recentVistors, setRecentVistors] = useState([]);
   const [bannerImages, setBannerImages] = useState([]);
@@ -529,16 +579,40 @@ const Dashboard = (props) => {
     }).catch((err) => {
       console.error("API error (StaffList):", err);
     });
-    postRequest("customervisit/CategoryList", {}, token).then((resp) => {
-      if (!resp || typeof resp !== 'object' || resp.status === undefined) {
+    postRequest("masters/product/category/web-browse/", {}, token).then((resp) => {
+      if (!resp || !Array.isArray(resp.Data)) {
         console.error("Invalid API response for CategoryList", resp);
         return;
       }
-      if (resp.status == 200) {
-        console.log("CategoryList", resp.data);
-
-
-      }
+      // Transform the response to match the expected format
+      const categories = resp.Data.map(item => ({
+        category_id: item.category_id,
+        category_name: item.category_name,
+        image_path: item.image_path,
+        url_image: item.url_image,
+        banner_path: item.banner_path,
+        url_banner: item.url_banner
+      }));
+      
+      console.log("CategoryList", categories);
+      setCategoryList(categories);
+      
+      // Preload images for all categories
+      categories.forEach(category => {
+        if (category.image_path && category.url_image) {
+          const imageUrl = `${category.url_image}${category.image_path}`;
+          setCategoryImages(prev => ({
+            ...prev,
+            [category.category_id]: [{
+              uri: imageUrl,
+              id: category.category_id,
+              bannerUrl: category.banner_path && category.url_banner 
+                ? `${category.url_banner}${category.banner_path}`
+                : null
+            }]
+          }));
+        }
+      });
     }).catch((err) => {
       console.error("API error (CategoryList):", err);
     });
@@ -868,6 +942,7 @@ const Dashboard = (props) => {
                       token
                     ).then((resp) => {
                       if (resp?.status == 200) {
+                        console.log("resp", resp);
                         setDetails(resp?.data);
                       }
                     });
@@ -884,68 +959,79 @@ const Dashboard = (props) => {
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
                       <Text>Name</Text>
-                      <Text style={MyStyles.text}>{details?.full_name}</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.full_name}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text>Mobile</Text>
-                      <Text style={MyStyles.text}>{details?.mobile}</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.mobile}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text>Date of Birth</Text>
-                      <Text style={MyStyles.text}>{moment(details?.dob).format("DD/MM/YYYY")}</Text>
+                      <Text>Gender</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.gender}</Text>
                     </View>
                   </View>
                   <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
+
+                    <View style={{ flex: 1 }}>
+                      <Text>Date of Birth</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.dob}</Text>
+                    </View>
+                  
                     <View style={{ flex: 1 }}>
                       <Text>Date of Aniversary</Text>
-                      <Text style={MyStyles.text}>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>
                         {moment(details?.doa).format("DD/MM/YYYY") ? details.doa : "N/A"}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text>Profession</Text>
-                      <Text style={MyStyles.text}>{details?.profession}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text>Address</Text>
-                      <Text style={MyStyles.text}>{details?.address}</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.profession}</Text>
                     </View>
                   </View>
                   <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
+                      <Text>Address</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.address}</Text>
+                    </View>
+                 
+                    <View style={{ flex: 1 }}>
                       <Text>Branch Name</Text>
-                      <Text style={MyStyles.text}>{details?.branch_name}</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.branch_name}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text>Staff Name</Text>
-                      <Text style={MyStyles.text}>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>
                         {details.staff_name ? details.staff_name : "N/A"}
                       </Text>
                     </View>
+                    </View>
+                  <Divider style={{ marginVertical: 8 }} />
+                  <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
                       <Text>Ref Name</Text>
-                      <Text style={MyStyles.text}>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>
                         {details.ref_name ? details.ref_name : "N/A"}
+                      </Text>
+                    </View>
+                 
+                    <View style={{ flex: 1 }}>
+                      <Text>Category Name</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.category_name}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text>Total Visit</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>
+                        <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.visit_count}</Text>
                       </Text>
                     </View>
                   </View>
                   <Divider style={{ marginVertical: 8 }} />
                   <View style={MyStyles.row}>
                     <View style={{ flex: 1 }}>
-                      <Text>Category Name</Text>
-                      <Text style={MyStyles.text}>{details?.category_name}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text>Total Visit</Text>
-                      <Text style={MyStyles.text}>
-                        <Text style={MyStyles.text}>{details?.total_visit}</Text>
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
                       <Text>Last Visit</Text>
-                      <Text style={MyStyles.text}>{details?.last_visit}</Text>
+                      <Text style={[MyStyles.text, { fontWeight: "bold" }]}>{details?.last_visit}</Text>
                     </View>
                   </View>
                 </View>
@@ -1202,25 +1288,45 @@ const Dashboard = (props) => {
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <ScrollView>
-                          <View style={MyStyles.wrapper}>
-                            <Text>SKU</Text>
-                            <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
+                        <View style={MyStyles.wrapper}>
+                            <Text style={{ fontWeight: "bold" }}>Product Category</Text>
+                            <Text style={MyStyles.text}>{item.product_category ? item.product_category : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Remarks</Text>
-                            <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
+                            <Text style={{ fontWeight: "bold" }}>Product Name</Text>
+                            <Text style={MyStyles.text}>{item.product_name ? item.product_name : "N/A"}</Text>
                           </View>
+                          {item.sku
+                            ? (
+                              <View style={MyStyles.wrapper}>
+                                <Text style={{ fontWeight: "bold" }}>SKU</Text>
+                                <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
+                              </View>
+                            )
+                            : null
+                          }
+                          
                           <View style={MyStyles.wrapper}>
-                            <Text>Staff</Text>
+                            <Text style={{ fontWeight: "bold" }}>Staff</Text>
                             <Text style={MyStyles.text}>
                               {item.staff_name ? item.staff_name : "N/A"}
                             </Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Date</Text>
+                            <Text style={{ fontWeight: "bold" }}>Date</Text>
                             <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
                           </View>
+                          
+                        <View style={MyStyles.wrapper}>
+                          <Text style={{ fontWeight: "bold" }}>Interest </Text>
+                          <Text style={MyStyles.text}>{item.interest ? item.interest : "N/A"}</Text>
+                        </View>
+                        <View style={MyStyles.wrapper}>
+                            <Text style={{ fontWeight: "bold" }}>Remarks</Text>
+                            <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
+                          </View>
                         </ScrollView>
+
                       </View>
                     </View>
                   );
@@ -1250,21 +1356,21 @@ const Dashboard = (props) => {
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <ScrollView>
                           <View style={MyStyles.wrapper}>
-                            <Text>Product Name</Text>
+                            <Text style={{ fontWeight: "bold" }}>Product Name</Text>
                             <Text style={MyStyles.text}>
                               {item.product_name ? item.product_name : "N/A"}
                             </Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>SKU</Text>
+                            <Text style={{ fontWeight: "bold" }}>SKU</Text>
                             <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Remarks</Text>
+                            <Text style={{ fontWeight: "bold" }}>Remarks</Text>
                             <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Date</Text>
+                            <Text style={{ fontWeight: "bold" }}>Date</Text>
                             <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
                           </View>
                         </ScrollView>
@@ -1296,21 +1402,21 @@ const Dashboard = (props) => {
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <ScrollView>
                           <View style={MyStyles.wrapper}>
-                            <Text>Product Name</Text>
+                            <Text style={{ fontWeight: "bold" }}>Product Name</Text>
                             <Text style={MyStyles.text}>
                               {item.product_name ? item.product_name : "N/A"}
                             </Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>SKU</Text>
+                            <Text style={{ fontWeight: "bold" }}>SKU</Text>
                             <Text style={MyStyles.text}>{item.sku ? item.sku : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Remarks</Text>
+                            <Text style={{ fontWeight: "bold" }}>Remarks</Text>
                             <Text style={MyStyles.text}>{item.remarks ? item.remarks : "N/A"}</Text>
                           </View>
                           <View style={MyStyles.wrapper}>
-                            <Text>Date</Text>
+                            <Text style={{ fontWeight: "bold" }}>Date</Text>
                             <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
                           </View>
                         </ScrollView>
@@ -1484,7 +1590,7 @@ const Dashboard = (props) => {
               </View>
             </View>
           ) : (
-            <RedeemModal visible={modal.redeem} onClose={() => { setModal({ ...modal, redeem: false }); setRedeem(null); setPoints(null); }} points={points} redeem={redeem} expiredPoints={expiredPoints} redeemPoints={redeemPoints} voucherList={voucherList} token={token} staffList={staffList} />
+            <RedeemModal branchId={branchId} visible={modal.redeem} onClose={() => { setModal({ ...modal, redeem: false }); setRedeem(null); setPoints(null); }} points={points} redeem={redeem} expiredPoints={expiredPoints} redeemPoints={redeemPoints} voucherList={voucherList} token={token} staffList={staffList} />
           )
         }
       />
@@ -2110,28 +2216,33 @@ const Dashboard = (props) => {
 
 
                       <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#000', marginVertical: 6 }}>Category</Text>
-                      <View style={[MyStyles.checkboxContainer, { fontSize: 12 }]}>
-                        <Pressable onPress={() => toggleCategory('scooter')} style={MyStyles.checkboxRow}>
-                          <View style={[MyStyles.checkbox, category.scooter && MyStyles.checked]}>
-                            {category.scooter && <Text style={MyStyles.tick}>✓</Text>}
-                          </View>
-                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>SCOOTER</Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => toggleCategory('motorcycle')} style={MyStyles.checkboxRow}>
-                          <View style={[MyStyles.checkbox, category.motorcycle && MyStyles.checked]}>
-                            {category.motorcycle && <Text style={MyStyles.tick}>✓</Text>}
-                          </View>
-                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>MOTORCYCLE</Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => toggleCategory('bike')} style={MyStyles.checkboxRow}>
-                          <View style={[MyStyles.checkbox, category.bike && MyStyles.checked]}>
-                            {category.bike && <Text style={MyStyles.tick}>✓</Text>}
-                          </View>
-                          <Text style={[MyStyles.checkboxLabel, { fontSize: 12 }]}>BIKE</Text>
-                        </Pressable>
-                      </View>
+                      <View style={[MyStyles.checkboxContainer, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', width: '100%' }]}>
+  {categoryList.map((item, index) => (
+    <View key={item.category_id} style={{ width: '25%', padding: 4, boxSizing: 'border-box' }}>
+      <Pressable 
+        onPress={() => toggleCategory(item.category_id, item.category_name)} 
+        style={[MyStyles.checkboxRow, { flexDirection: 'row', alignItems: 'center' }]}
+      >
+        <View style={[MyStyles.checkbox, selectedCategories[item.category_id] && MyStyles.checked]}>
+          {selectedCategories[item.category_id] && <Text style={MyStyles.tick}>✓</Text>}
+        </View>
+        <Text 
+          style={[
+            MyStyles.checkboxLabel, 
+            { 
+              fontSize: 12,
+              flex: 1,
+              marginLeft: 5,
+              textAlign: 'left'
+            }
+          ]}
+        >
+          {item.category_name.toUpperCase()}
+        </Text>
+      </Pressable>
+    </View>
+  ))}
+</View>
 
 
                     <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#000', marginVertical: 2, marginBottom: 6 }}>Interest</Text>
@@ -2188,6 +2299,7 @@ const Dashboard = (props) => {
                   onPress={() => {
                     if(payloadData.length > 0){
                     setModal({ ...modal, uploadNext: true, checkIn: false, upload: false });
+                    console.log("payloadData------>", payloadData);
                     }else{
                       alert("Please select at least one category");
                     }
@@ -2216,7 +2328,6 @@ const Dashboard = (props) => {
        token={token} 
        imageUrl={imageUrl} 
        serviceUrl={serviceUrl} 
-       setCategory={setCategory} 
        setUpload={setUpload} 
        setCheckIn={setCheckIn} 
        pickImage={pickImage} 
@@ -2236,7 +2347,6 @@ const Dashboard = (props) => {
      token={token} 
      imageUrl={imageUrl} 
      serviceUrl={serviceUrl} 
-     setCategory={setCategory} 
      setUpload={setUpload} 
      setCheckIn={setCheckIn} 
      pickImage={pickImage} 
@@ -2245,7 +2355,7 @@ const Dashboard = (props) => {
      setInterest={setInterest}/>
     ),
     requirement: (
-     <InterestRequirement visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setCategory={setCategory} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+     <InterestRequirement visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
     ),
   }[interest?.toLowerCase().trim()] || null
 )}
