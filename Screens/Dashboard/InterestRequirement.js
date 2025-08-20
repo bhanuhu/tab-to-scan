@@ -30,7 +30,10 @@ const InterestRequirement = ({
   setUpload,
   setCheckIn,
   pickImage,
-  handleUpload
+  handleUpload,
+  subCategories,
+  setSelectedCategories,
+  selectedCategories,
 }) => {
   return (
     <CustomModal
@@ -55,26 +58,14 @@ const InterestRequirement = ({
       >
         Category{'\n'}
         <Text style={{ fontSize: 18, color: "#333" }}>
-          {payload.category_id === "2180"
-            ? "SCOOTER"
-            : payload.category_id === "2181"
-            ? "MOTORCYCLE"
-            : "BIKE"}
+          {payload.category_name}
         </Text>
       </Text>
 
       {/* Sub Category Dropdown */}
       <DropDown
         data={
-          payload.category_id === "2180"
-            ? [
-                { label: "JUPITER", value: "JUPITER" },
-                { label: "PEP", value: "PEP" },
-              ]
-            : [
-                { label: "APACHE", value: "APACHE" },
-                { label: "SPORTS", value: "SPORTS" },
-              ]
+          subCategories[payload.category_id] || []
         }
         placeholder="Sub Category"
         value={payload.sub_category}
@@ -133,11 +124,7 @@ const InterestRequirement = ({
                   setUpload(null);
                   setCheckIn(false);
                   setPayloadData([]);
-                  setCategory({
-                    scooter: false,
-                    motorcycle: false,
-                    bike: false,
-                  });
+                  setSelectedCategories({});
                   setImage([]);
                 }}
                 style={MyStyles.button}
@@ -190,11 +177,7 @@ const InterestRequirement = ({
                     setCheckIn(false);
                     setUpload(null);
                     setPayloadData([]);
-                    setCategory({
-                      scooter: false,
-                      motorcycle: false,
-                      bike: false,
-                    });
+                    setSelectedCategories({});
                     setImage([]);
                   } else {
                     Alert.alert('Partial Success', 'Some uploads failed. Please check logs.');
@@ -203,6 +186,9 @@ const InterestRequirement = ({
                 } catch (error) {
                   console.error("Upload error:", error);
                   Alert.alert('Error', 'Network or server error.');
+                  setSelectedCategories({});
+                  setPayloadData([]);
+                  setImage([]);
                 }
               }}
               

@@ -2356,25 +2356,28 @@ const Dashboard = (props) => {
      />
     ),
     followup: (
-     <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} 
-     modal={modal} 
-     setModal={setModal} 
-     payloadData={payloadData} 
-     setPayloadData={setPayloadData} 
-     categoryImages={categoryImages}
-     setCategoryImages={setCategoryImages}
-     token={token} 
-     imageUrl={imageUrl} 
-     serviceUrl={serviceUrl} 
-     setUpload={setUpload} 
-     setCheckIn={setCheckIn} 
-     pickImage={pickImage} 
-     handleUpload={handleUpload} 
-     interest={interest} 
-     setInterest={setInterest}/>
+     <InterestFollowUp visible={modal.upload && interest?.toLowerCase().trim() === 'followup'} 
+       modal={modal} 
+       setModal={setModal} 
+       payloadData={payloadData} 
+       setPayloadData={setPayloadData} 
+       categoryImages={categoryImages}
+       setCategoryImages={setCategoryImages}
+       selectedCategories={selectedCategories}
+       setSelectedCategories={setSelectedCategories}
+       subCategories={subCategories}
+       token={token} 
+       imageUrl={imageUrl} 
+       serviceUrl={serviceUrl} 
+       setUpload={setUpload} 
+       setCheckIn={setCheckIn} 
+       pickImage={pickImage} 
+       handleUpload={handleUpload} 
+       interest={interest} 
+       setInterest={setInterest}/>
     ),
     requirement: (
-     <InterestRequirement visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
+     <InterestRequirement selectedCategories={selectedCategories} setSelectedCategories={setSelectedCategories} subCategories={subCategories} visible={modal.upload && interest?.toLowerCase().trim() === 'requirement'} modal={modal} setModal={setModal} payloadData={payloadData} setPayloadData={setPayloadData} image={image} setImage={setImage} token={token} imageUrl={imageUrl} serviceUrl={serviceUrl} setUpload={setUpload} setCheckIn={setCheckIn} pickImage={pickImage} handleUpload={handleUpload} interest={interest} setInterest={setInterest}/>
     ),
   }[interest?.toLowerCase().trim()] || null
 )}

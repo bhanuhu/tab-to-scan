@@ -28,17 +28,18 @@ const InterestFollowUp = ({
   payloadData,
   setPayloadData,
   categoryImages,
-  setCategoryImages,
   token,
   imageUrl,
   serviceUrl,
-  setCategory,
   setUpload,
   setCheckIn,
   pickImage,
   handleUpload,
   index = 0,
-  interest
+  interest,
+  selectedCategories,
+  subCategories,
+  setSelectedCategories
 }) => {
   const [isUploading, setIsUploading] = React.useState(false);
   const isMounted = useRef(true);
@@ -122,15 +123,10 @@ const InterestFollowUp = ({
         return updated;
       });
   
-      // Optionally update categoryImages state
-      setCategoryImages(prev => ({
-        ...prev,
-        [finalCategoryType]: [...(prev[finalCategoryType] || []), uploadedImageUrl]
-      }));
-  
     } catch (error) {
       console.error('Error uploading image:', error);
       Alert.alert('Error', error.message || 'Failed to upload image');
+      setIsUploading(false);
     } finally {
       if (isMounted.current) setIsUploading(false);
     }
@@ -161,9 +157,15 @@ const InterestFollowUp = ({
                             />
                         </View>
             <ScrollView>
-              <View style={[MyStyles.row, { justifyContent: "space-around", flexWrap: 'wrap' }]}>
-  {(payloadData || []).map((payload, index) => (
-    <View key={index} style={{ flex: 0.30, marginBottom: 20, overflowX: "hidden"}}>
+              <View style={{ width: '100%' }}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 10 }}
+                >
+                  <View style={[MyStyles.row, { flexWrap: 'nowrap', paddingHorizontal: 10 }]}>
+                    {(payloadData || []).map((payload, index) => (
+                      <View key={index} style={{ width: 195, marginRight: 15, marginBottom: 20 }}>
       <Text
         style={{
           backgroundColor: "#eee",
@@ -178,11 +180,7 @@ const InterestFollowUp = ({
       >
         Category{'\n'}
         <Text style={{ fontSize: 18, color: "#333" }}>
-          {payload.category_id === "2180"
-            ? "SCOOTER"
-            : payload.category_id === "2181"
-            ? "MOTORCYCLE"
-            : "BIKE"}
+          {payload.category_name}
         </Text>
       </Text>
 
@@ -306,10 +304,7 @@ const InterestFollowUp = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
       >
-        {categoryImages[payloadData[index]?.category_id === '2180' ? 'scooter' : 
-                       payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike']
-                       ?.filter(uri => uri !== payloadData[index]?.image_path?.choose) // Don't show the main image in the list
-                       .map((uri, idx) => (
+        {payloadData[index]?.image_path?.add?.map((uri, idx) => (
           <View
             key={idx}
             style={{
@@ -331,12 +326,10 @@ const InterestFollowUp = ({
             />
             <TouchableOpacity
               onPress={() => {
-                const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
-                                  payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
-                setCategoryImages(prev => ({
-                  ...prev,
-                  [categoryType]: prev[categoryType].filter((_, i) => i !== idx)
-                }));
+                // Remove image from payloadData.image_path.add
+                const updatedPayload = [...payloadData];
+                updatedPayload[index].image_path.add = updatedPayload[index].image_path.add.filter((_, i) => i !== idx);
+                setPayloadData(updatedPayload);
               }}
               style={{
                 position: "absolute",
@@ -400,7 +393,6 @@ const InterestFollowUp = ({
                       try {
                         const result = await ImagePicker.launchCameraAsync({
                           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                          allowsEditing: true,
                           aspect: [4, 3],
                           quality: 0.8,
                           base64: false,
@@ -422,7 +414,6 @@ const InterestFollowUp = ({
                       try {
                         const result = await ImagePicker.launchImageLibraryAsync({
                           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                          allowsEditing: true,
                           aspect: [4, 3],
                           quality: 0.8,
                           base64: false,
@@ -556,28 +547,18 @@ const InterestFollowUp = ({
 
       {/* Sub Category Dropdown */}
       <DropDown
-        data={
-          payload.category_id === "2180"
-            ? [
-                { label: "JUPITER", value: "JUPITER" },
-                { label: "PEP", value: "PEP" },
-              ]
-            : [
-                { label: "APACHE", value: "APACHE" },
-                { label: "SPORTS", value: "SPORTS" },
-              ]
-        }
-        placeholder="Sub Category"
-        value={payload.sub_category}
-        onChange={(text) =>
-          setPayloadData((prev) => {
-            const updated = [...prev];
-            updated[index] = { ...updated[index], sub_category: text };
-            return updated;
-          })
-        }
-        style={MyStyles.dropdown}
-      />
+  data={subCategories[payload.category_id] || []}
+  placeholder="Sub Category"
+  value={payload.sub_category}
+  onChange={(text) =>
+    setPayloadData((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], sub_category: text };
+      return updated;
+    })
+  }
+  style={MyStyles.dropdown}
+/>
 
       {/* Remarks Input */}
       <TextInput
@@ -613,9 +594,11 @@ const InterestFollowUp = ({
 
 
     
-    </View>
-  ))}
-</View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
 
 
             </ScrollView>
@@ -642,17 +625,7 @@ const InterestFollowUp = ({
                   setUpload(null);
                   setCheckIn(false);
                   setPayloadData([]);
-                  setCategory({
-                    scooter: false,
-                    motorcycle: false,
-                    bike: false,
-                  });
-                  const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
-                                     payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
-                  setCategoryImages(prev => ({
-                    ...prev,
-                    [categoryType]: []
-                  }));
+                  setSelectedCategories({});
                 }}
                 style={MyStyles.button}
               >
@@ -666,6 +639,7 @@ const InterestFollowUp = ({
               </Button>
               <Button mode="contained"  style={{...MyStyles.button, backgroundColor: '#3699fe'}} compact 
               onPress={async () => {
+                console.log('🚀 Payload Data:------------>>>>>', payloadData);
                 if (!Array.isArray(payloadData) || payloadData.length === 0) {
                   Alert.alert('Error', 'No data to upload.');
                   return;
@@ -706,7 +680,7 @@ const InterestFollowUp = ({
                         staff_id: item?.staff_id || '1069',
                         category_id: item?.category_id || '2180',
                       };
-              
+                      console.log('🚀 Payload:------------>>>>>', payload);
                       const resp = await postRequest(
                         'customervisit/insertCustomerUpload',
                         payload,
@@ -726,21 +700,15 @@ const InterestFollowUp = ({
                     setCheckIn(false);
                     setUpload(null);
                     setPayloadData([]);
-                    setCategory({
-                      scooter: false,
-                      motorcycle: false,
-                      bike: false,
-                    });
+                    setSelectedCategories({});
                   const categoryType = payloadData[index]?.category_id === '2180' ? 'scooter' : 
                                      payloadData[index]?.category_id === '2181' ? 'motorcycle' : 'bike';
-                  setCategoryImages(prev => ({
-                    ...prev,
-                    [categoryType]: []
-                  }));
+                 
 
               
                   } else {
                     Alert.alert('Partial Success', 'Some uploads failed. Please check logs.');
+                    setSelectedCategories({});
                   }
                 } catch (e) {
                   console.error("Upload error:", e);
