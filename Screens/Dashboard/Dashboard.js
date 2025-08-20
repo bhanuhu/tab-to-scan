@@ -2299,7 +2299,21 @@ const Dashboard = (props) => {
                   onPress={() => {
                     if(payloadData.length > 0){
                     setModal({ ...modal, uploadNext: true, checkIn: false, upload: false });
-                    console.log("payloadData------>", payloadData);
+                    const updatedPayload = payloadData.map(item => {
+                      const imageUrl = categoryImages[item.category_id]?.[0]?.uri || '';
+                      // Replace "BranchCategory" with "CustomerUploads" in the URL
+                      const modifiedImageUrl = imageUrl.replace('/BranchCategory/', '/CustomerUploads/');
+                      return {
+                        ...item,
+                        image_path: {
+                          ...item.image_path,
+                          url: modifiedImageUrl
+                        }
+                      };
+                    });
+                    
+                    setPayloadData(updatedPayload);
+                    console.log("Updated payloadData with images------>", updatedPayload);
                     }else{
                       alert("Please select at least one category");
                     }
