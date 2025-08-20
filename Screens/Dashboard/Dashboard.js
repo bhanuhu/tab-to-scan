@@ -2284,6 +2284,7 @@ const Dashboard = (props) => {
                   onPress={() => {
                     setModal({ ...modal, upload: false });
                     setUpload(null);
+                    setSelectedCategories({});
                   }}
                 >
                   CANCEL
@@ -2314,6 +2315,7 @@ const Dashboard = (props) => {
                     
                     setPayloadData(updatedPayload);
                     console.log("Updated payloadData with images------>", updatedPayload);
+                    console.log("subCategories--->", subCategories);
                     }else{
                       alert("Please select at least one category");
                     }
@@ -2339,6 +2341,9 @@ const Dashboard = (props) => {
        setPayloadData={setPayloadData} 
        categoryImages={categoryImages}
        setCategoryImages={setCategoryImages}
+       selectedCategories={selectedCategories}
+       setSelectedCategories={setSelectedCategories}
+       subCategories={subCategories}
        token={token} 
        imageUrl={imageUrl} 
        serviceUrl={serviceUrl} 
