@@ -28,6 +28,7 @@ const InterestFollowUp = ({
   payloadData,
   setPayloadData,
   categoryImages,
+  branchId,
   token,
   imageUrl,
   serviceUrl,
@@ -45,88 +46,94 @@ const InterestFollowUp = ({
   const isMounted = useRef(true);
   const [date, setDate] = useState(new Date());
 
-
   const handleImageUpload = async (image, itemIndex = index, categoryType) => {
     if (!image || !image.uri) {
       console.log('No valid image selected');
       return;
     }
-  
+    
     const currentIndex = typeof index === 'number' ? index : 0;
-  
+    const itemIndexToUse = typeof itemIndex === 'number' ? itemIndex : currentIndex;
+    const updatedPayload = [...payloadData];
+    
     try {
       setIsUploading(true);
-  
-      const imageType = image.mimeType || 'image/jpeg';
-      const formData = new FormData();
-      formData.append('files', {
-        uri: image.uri,
-        type: imageType,
-        name: image.fileName || `image_${Date.now()}.jpg`
-      });
-  
-      console.log('📤 Uploading image:', {
-        payloadIndex: itemIndex,
-        imageType,
-        uri: image.uri,
-        fileName: image.fileName || 'generated_name.jpg',
-        size: image.fileSize ? `${Math.round(image.fileSize / 1024)}KB` : 'unknown'
-      });
-  
-      const response = await uploadImage("customervisit/UploadCustomerImage", formData, token);
-  
-      const uploadedImageUrl = response?.data?.url || response?.url || image.uri;
-      if (!uploadedImageUrl) throw new Error('No URL returned from server');
-  
-      const itemIndexToUse = typeof itemIndex === 'number' ? itemIndex : currentIndex;
-      const currentItem = { ...payloadData[itemIndexToUse] } || {};
-  
-      let finalCategoryType = image._category || 
-                              currentItem.product_category?.toLowerCase() || 
-                              (currentItem.category_id === '2180' ? 'scooter' : 
-                               currentItem.category_id === '2181' ? 'motorcycle' : 'bike');
-  
-      console.log('🎯 Determined category for upload:', finalCategoryType);
-  
-      // Ensure image_path exists
-      currentItem.image_path = currentItem.image_path || {};
-  
-      // Conditionally initialize category array
-      if (!currentItem.image_path[finalCategoryType]) {
-        currentItem.image_path[finalCategoryType] = { urls: [], main: null, last_updated: null };
-      }
-  
-      // Add image URL to the category-specific array
-      currentItem.image_path[finalCategoryType].urls = [
-        ...(currentItem.image_path[finalCategoryType].urls || []),
-        uploadedImageUrl
-      ];
-  
-      // Update choose/add based on categoryType
-      if (categoryType === 'choose') {
-        currentItem.image_path.choose = uploadedImageUrl;
+      
+      // Check if this is a retry by looking for an existing entry with the same localUri
+      const existingImageIndex = updatedPayload[itemIndexToUse].image_path?.add?.findIndex(
+        img => img.localUri === image.uri
+      );
+
+      if (existingImageIndex >= 0) {
+        // Update existing entry for retry
+        updatedPayload[itemIndexToUse].image_path.add[existingImageIndex] = {
+          ...updatedPayload[itemIndexToUse].image_path.add[existingImageIndex],
+          isUploading: true,
+          uploadError: false
+        };
       } else {
-        currentItem.image_path.add = [
-          ...(currentItem.image_path.add || []),
-          uploadedImageUrl
-        ];
+        // Add new entry for first-time upload
+        updatedPayload[itemIndexToUse] = {
+          ...updatedPayload[itemIndexToUse],
+          image_path: {
+            ...updatedPayload[itemIndexToUse].image_path,
+            add: [
+              ...(updatedPayload[itemIndexToUse].image_path?.add || []),
+              { localUri: image.uri, isUploading: true, uploadError: false }
+            ]
+          }
+        };
       }
-  
-      currentItem.image_path[finalCategoryType].main = uploadedImageUrl;
-      currentItem.image_path[finalCategoryType].last_updated = new Date().toISOString();
-  
-      // Update the payload data state
-      setPayloadData(prev => {
-        const updated = [...prev];
-        updated[itemIndexToUse] = currentItem;
-        console.log('🚀 Updated Payload Data:', updated[itemIndexToUse]);
-        return updated;
+      setPayloadData([...updatedPayload]);
+      
+      // Then upload the image to the server
+      const formData = new FormData();
+      formData.append('images', {
+        uri: image.uri,
+        type: image.mimeType || 'image/jpeg',
+        name: `image-${Date.now()}.jpg`
       });
-  
+      
+      const response = await uploadImage("upload", formData, token);
+      console.log("Upload response:", response);
+      if (!response || !response.fileNames || !Array.isArray(response.fileNames) || response.fileNames.length === 0) {
+        throw new Error('Invalid response from server');
+      }
+      
+      // Update the payload with the server URL
+      const serverUrl = response.fileNames[0];
+      const updatedPayloadWithServerUrl = [...payloadData];
+      const imageIndex = updatedPayloadWithServerUrl[itemIndexToUse].image_path.add.findIndex(
+        img => img.localUri === image.uri
+      );
+      
+      if (imageIndex !== -1) {
+        updatedPayloadWithServerUrl[itemIndexToUse].image_path.add[imageIndex] = {
+          ...updatedPayloadWithServerUrl[itemIndexToUse].image_path.add[imageIndex],
+          serverUrl: serverUrl,
+          isUploading: false
+        };
+        setPayloadData(updatedPayloadWithServerUrl);
+      }
+      
     } catch (error) {
       console.error('Error uploading image:', error);
-      Alert.alert('Error', error.message || 'Failed to upload image');
-      setIsUploading(false);
+      // Update the UI to show upload failed
+      const errorPayload = [...payloadData];
+      const errorIndex = errorPayload[itemIndexToUse].image_path.add.findIndex(
+        img => img.localUri === image.uri
+      );
+      
+      if (errorIndex !== -1) {
+        errorPayload[itemIndexToUse].image_path.add[errorIndex] = {
+          ...errorPayload[itemIndexToUse].image_path.add[errorIndex],
+          uploadError: true,
+          isUploading: false
+        };
+        setPayloadData(errorPayload);
+      }
+      
+      Alert.alert('Upload Failed', 'Could not upload image. Please try again.');
     } finally {
       if (isMounted.current) setIsUploading(false);
     }
@@ -236,8 +243,17 @@ const InterestFollowUp = ({
                       });
 
                       if (!result.canceled && result.assets?.[0]) {
-                        // For camera capture, use handleImageUpload
-                        await handleImageUpload(result.assets[0],index,"choose");
+                        setPayloadData((prev) => {
+                          const updated = [...prev];
+                          updated[index] = {
+                            ...updated[index],
+                            image_path: {
+                              ...updated[index].image_path,
+                              choose: result.assets[0].uri
+                            }
+                          };
+                          return updated;
+                        });
                       }
                     } catch (error) {
                       console.error('Error taking photo:', error);
@@ -258,8 +274,17 @@ const InterestFollowUp = ({
                       });
 
                       if (!result.canceled && result.assets?.[0]) {
-                        // For camera capture, use handleImageUpload
-                        await handleImageUpload(result.assets[0],index,"choose");
+                        setPayloadData((prev) => {
+                          const updated = [...prev];
+                          updated[index] = {
+                            ...updated[index],
+                            image_path: {
+                              ...updated[index].image_path,
+                              choose: result.assets[0].uri
+                            }
+                          };
+                          return updated;
+                        });
                       }
                     } catch (error) {
                       console.error('Error picking file:', error);
@@ -284,71 +309,129 @@ const InterestFollowUp = ({
       </Button>
 
       {/* Main Image Preview */}
-      <Image
-        source={{
+        <Image
+          source={{
           uri: `${payloadData[index]?.image_path?.choose
             ? payloadData[index].image_path.choose
             : payloadData[index]?.image_path?.url}`
-        }}
-        style={{
-          height: 130,
-          width: "100%",
-          marginVertical: 10,
-          resizeMode: "stretch",
-        }}
-      />
+          }}
+          style={{
+            height: 130,
+            width: "100%",
+            marginVertical: 10,
+            resizeMode: "stretch",
+          }}
+        />
       
       {/* Additional Images */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
-      >
-        {payloadData[index]?.image_path?.add?.map((uri, idx) => (
-          <View
-            key={idx}
-            style={{
-              marginRight: 10,
-              borderRadius: 8,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: "#ccc",
-              position: "relative",
-            }}
-          >
-            <Image
-              source={{ uri }}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
+        >
+        {payloadData[index]?.image_path?.add?.map((imageData, idx) => {
+          // Use local URI if available, otherwise use server URL
+          const imageSource = { 
+            uri: imageData.localUri || 
+                 (imageData.startsWith('http') ? imageData : `${imageUrl}${imageData}`) 
+          };
+            
+          return (
+            <View
+              key={idx}
               style={{
-                height: 100,
-                width: 100,
-                resizeMode: "cover",
-              }}
-            />
-            <TouchableOpacity
-              onPress={() => {
-                // Remove image from payloadData.image_path.add
-                const updatedPayload = [...payloadData];
-                updatedPayload[index].image_path.add = updatedPayload[index].image_path.add.filter((_, i) => i !== idx);
-                setPayloadData(updatedPayload);
-              }}
-              style={{
-                position: "absolute",
-                top: 5,
-                right: 5,
-                backgroundColor: "rgba(0,0,0,0.6)",
-                borderRadius: 12,
-                width: 24,
-                height: 24,
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1,
+                marginRight: 10,
+                borderRadius: 8,
+                overflow: "hidden",
+                borderWidth: 1,
+                borderColor: "#ccc",
+                position: "relative",
               }}
             >
-              <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </ScrollView>
+              {imageSource.uri && !imageData.uploadError ? (
+                <Image
+                  source={imageSource}
+                  style={{
+                    height: 100,
+                    width: 100,
+                    resizeMode: "cover",
+                  }}
+                  onError={(e) => {
+                    console.log('Error loading image:', e.nativeEvent.error, 'Source:', imageSource.uri);
+                    // Update the source to null to trigger the fallback UI
+                    const updatedPayload = [...payloadData];
+                    updatedPayload[index].image_path.add[idx] = null;
+                    setPayloadData(updatedPayload);
+                  }}
+                />
+              ) : (
+                <View style={{
+                  height: 100,
+                  width: 100,
+                  backgroundColor: imageData.uploadError ? '#ffebee' : '#f0f0f0',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: imageData.uploadError ? '#f44336' : '#ddd',
+                  borderRadius: 4,
+                  position: 'relative'
+                }}>
+                  {imageData.isUploading ? (
+                    <ActivityIndicator color="#1abc9c" />
+                  ) : (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ 
+                        color: imageData.uploadError ? '#f44336' : '#999', 
+                        textAlign: 'center',
+                        padding: 5
+                      }}>
+                        {imageData.uploadError ? 'Upload Failed' : 'Loading...'}
+                      </Text>
+                      {imageData.uploadError && (
+                        <Button
+                          mode="contained"
+                          compact
+                          onPress={() => handleImageUpload({ uri: imageData.localUri }, index, 'add', idx)}
+                          style={{
+                            backgroundColor: '#1abc9c',
+                            marginTop: 5,
+                            paddingHorizontal: 8,
+                            height: 24
+                          }}
+                          labelStyle={{ fontSize: 10 }}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+                <TouchableOpacity
+                  onPress={() => {
+                    // Remove image from payloadData.image_path.add
+                    const updatedPayload = [...payloadData];
+                    updatedPayload[index].image_path.add = updatedPayload[index].image_path.add.filter((_, i) => i !== idx);
+                    setPayloadData(updatedPayload);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 5,
+                    right: 5,
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    borderRadius: 12,
+                    width: 24,
+                    height: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1,
+                  }}
+                >
+                  <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
+                </TouchableOpacity>
+              </View>
+        )})}
+        </ScrollView>
 
       {/* Add Images Button */}
       <View style={MyStyles.row}>
@@ -358,30 +441,6 @@ const InterestFollowUp = ({
           style={{ backgroundColor: "#1abc9c" }}
           onPress={async () => {
             try {
-              // Check permissions first
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              
-              if (status !== 'granted') {
-                Alert.alert(
-                  'Permission Required',
-                  'Please allow access to your photos to upload images.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { 
-                      text: 'Open Settings', 
-                      onPress: () => {
-                        if (Platform.OS === 'ios') {
-                          Linking.openURL('app-settings:');
-                        } else {
-                          Linking.openSettings();
-                        }
-                      }
-                    }
-                  ]
-                );
-                return;
-              }
-
               // Show action sheet for image source selection
               Alert.alert(
                 'Select Image Source',
@@ -391,16 +450,33 @@ const InterestFollowUp = ({
                     text: 'Take Photo',
                     onPress: async () => {
                       try {
+                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                        if (status !== 'granted') {
+                          Alert.alert('Permission Required', 'Please allow camera access to take photos');
+                          return;
+                        }
+                        
                         const result = await ImagePicker.launchCameraAsync({
                           mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                          allowsEditing: false,
                           aspect: [4, 3],
                           quality: 0.8,
-                          base64: false,
-                          exif: false
                         });
 
                         if (!result.canceled && result.assets?.[0]) {
-                          await handleImageUpload(result.assets[0],index,"add");
+                          // Add to local state without uploading
+                          const updatedPayload = [...payloadData];
+                          updatedPayload[index] = {
+                            ...updatedPayload[index],
+                            image_path: {
+                              ...updatedPayload[index].image_path,
+                              add: [
+                                ...(updatedPayload[index].image_path?.add || []),
+                                { localUri: result.assets[0].uri, isUploading: false }
+                              ]
+                            }
+                          };
+                          setPayloadData(updatedPayload);
                         }
                       } catch (error) {
                         console.error('Error taking photo:', error);
@@ -412,17 +488,32 @@ const InterestFollowUp = ({
                     text: 'Choose from Gallery',
                     onPress: async () => {
                       try {
+                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                        if (status !== 'granted') {
+                          Alert.alert('Permission Required', 'Please allow access to your photos to select images');
+                          return;
+                        }
+                        
                         const result = await ImagePicker.launchImageLibraryAsync({
                           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                          aspect: [4, 3],
+                          allowsEditing: false,
                           quality: 0.8,
-                          base64: false,
-                          exif: false,
-                          selectionLimit: 1
                         });
 
                         if (!result.canceled && result.assets?.[0]) {
-                          await handleImageUpload(result.assets[0],index,"add");
+                          // Add to local state without uploading
+                          const updatedPayload = [...payloadData];
+                          updatedPayload[index] = {
+                            ...updatedPayload[index],
+                            image_path: {
+                              ...updatedPayload[index].image_path,
+                              add: [
+                                ...(updatedPayload[index].image_path?.add || []),
+                                { localUri: result.assets[0].uri, isUploading: false }
+                              ]
+                            }
+                          };
+                          setPayloadData(updatedPayload);
                         }
                       } catch (error) {
                         console.error('Error picking image:', error);
@@ -437,8 +528,8 @@ const InterestFollowUp = ({
                 ]
               );
             } catch (error) {
-              console.error('Error in image selection:', error);
-              Alert.alert('Error', 'Failed to select image');
+              console.error('Error in image picker:', error);
+              Alert.alert('Error', 'Failed to open image picker');
             }
           }}
           color="#1abc9c"
@@ -466,7 +557,28 @@ const InterestFollowUp = ({
             }}
             contentStyle={{ alignItems: "center", justifyContent: "center" }}
             textColor="#fff"
-            onPress={handleUpload}
+            disabled={isUploading || !payloadData[index]?.image_path?.add?.length}
+            onPress={async () => {
+              try {
+                // Upload all selected images
+                const imagesToUpload = payloadData[index]?.image_path?.add || [];
+                
+                for (const image of imagesToUpload) {
+                  if (image.localUri && !image.serverUrl) {
+                    await handleImageUpload(
+                      { uri: image.localUri },
+                      index,
+                      "add"
+                    );
+                  }
+                }
+                
+                Alert.alert('Success', 'All images uploaded successfully');
+              } catch (error) {
+                console.error('Error uploading images:', error);
+                Alert.alert('Upload Error', 'Failed to upload one or more images');
+              }
+            }}
           />
         </View>
       </View>
@@ -665,32 +777,35 @@ const InterestFollowUp = ({
                     }
               
                     for (let image of imageUris) {
-                      const payload = {
-                        tran_id: 0,
-                        customer_id: item?.customer_id || 0,
-                        mobile: item?.mobile || '',
-                        full_name: item?.full_name || '',
-                        remarks: item?.remarks || '',
-                        sku: item?.sku || '',
-                        image_path: image, // pass individual image URI
-                        appointment_date: item?.appointment_date || '',
+                          const payload = {
+                            tran_id: 0,
+                            customer_id: item?.customer_id || 0,
+                            branch_id: branchId,
+                            mobile: item?.mobile || '',
+                            full_name: item?.full_name || '',
+                            remarks: item?.remarks || '',
+                            sku: item?.sku || '',
+                        image_path: image.serverUrl || image.localUri || image || '', // Prefer serverUrl, fallback to localUri
+                            appointment_date: date ? moment(date).format('YYYY-MM-DD HH:mm:ss') : '',
                         payment: item?.payment || '',
                         sub_category: item?.sub_category || '',
                         interest: item?.interest || 'Yes',
                         staff_id: item?.staff_id || '1069',
                         category_id: item?.category_id || '2180',
+                        color:"",
+                        payment_mode:"",
                       };
                       console.log('🚀 Payload:------------>>>>>', payload);
-                      const resp = await postRequest(
-                        'customervisit/insertCustomerUpload',
-                        payload,
-                        token
-                      );
-              
-                      if (!(resp?.status === 200 && resp?.data && resp?.data[0]?.valid)) {
-                        allSuccessful = false;
-                        console.error("Upload failed for:", payload);
-                      }
+                          const resp = await postRequest(
+                            'customervisit/insertCustomerUpload',
+                            payload,
+                            token
+                          );
+
+                          if (!(resp?.status === 200 && resp?.data && resp?.data[0]?.valid)) {
+                            allSuccessful = false;
+                            console.error("Upload failed for:", payload);
+                          }
                     }
                   }
               

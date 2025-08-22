@@ -27,8 +27,11 @@ export function uploadImage(url, param, token) {
     },
     body: param,
   })
-    .then((response) => response.json())
-
+    .then(
+      (response) => {
+        return response.json();
+      }
+    )
     .catch((error) => {
       console.error(error);
     });

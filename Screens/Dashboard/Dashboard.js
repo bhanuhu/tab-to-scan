@@ -482,7 +482,7 @@ const Dashboard = (props) => {
       if (branchId) formData.append('branchId', branchId);
 
       console.log("Uploading image...");
-      const response = await uploadImage("/your-upload-endpoint", formData, token);
+      const response = await uploadImage("customervisit/insertCustomerUpload", formData, token);
       console.log("Upload response:", response);
       
       if (response?.success) {
@@ -1271,7 +1271,7 @@ const Dashboard = (props) => {
 
             {tabs === 1 && (
 
-              <Swiper showsButtons showsPagination={false}>
+              <Swiper autoplay={false} showsButtons showsPagination={false}>
                 {design.map((item, index) => {
                   return (
                     <View style={[MyStyles.row, { flex: 1 }]} key={index}>
@@ -1288,6 +1288,10 @@ const Dashboard = (props) => {
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <ScrollView>
+                        <View style={[MyStyles.wrapper, { marginHorizontal: 5,border:1, borderColor:"black", borderWidth:1 ,alignItems:"center", justifyContent:"center",borderRadius:8}]}>
+                            <Text style={{ fontWeight: "bold" }}>Date</Text>
+                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
+                          </View>
                         <View style={MyStyles.wrapper}>
                             <Text style={{ fontWeight: "bold" }}>Product Category</Text>
                             <Text style={MyStyles.text}>{item.product_category ? item.category_name : "N/A"}</Text>
@@ -1312,10 +1316,7 @@ const Dashboard = (props) => {
                               {item.staff_name ? item.staff_name : "N/A"}
                             </Text>
                           </View>
-                          <View style={MyStyles.wrapper}>
-                            <Text style={{ fontWeight: "bold" }}>Date</Text>
-                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
-                          </View>
+                          
                           
                         <View style={MyStyles.wrapper}>
                           <Text style={{ fontWeight: "bold" }}>Interest </Text>
@@ -2218,7 +2219,7 @@ const Dashboard = (props) => {
                       <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#000', marginVertical: 6 }}>Category</Text>
                       <View style={[MyStyles.checkboxContainer, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', width: '100%' }]}>
   {categoryList.map((item, index) => (
-    <View key={item.category_id} style={{ width: '25%', padding: 4, boxSizing: 'border-box' }}>
+    <View key={item.category_id} style={{ width: '25%', padding: 0, boxSizing: 'border-box' }}>
       <Pressable 
         onPress={() => toggleCategory(item.category_id, item.category_name)} 
         style={[MyStyles.checkboxRow, { flexDirection: 'row', alignItems: 'center' }]}
@@ -2336,6 +2337,7 @@ const Dashboard = (props) => {
      <InterestYes  
        visible={modal.upload && interest?.toLowerCase().trim() === 'yes'} 
        modal={modal} 
+       branchId={branchId}
        setModal={setModal} 
        payloadData={payloadData} 
        setPayloadData={setPayloadData} 

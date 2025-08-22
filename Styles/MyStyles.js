@@ -71,9 +71,9 @@ const MyStyles = StyleSheet.create({
     },
     checkboxContainer: {
       flexDirection: 'row',
-      gap: 24,
+      gap: 12,
       justifyContent: 'space-between',
-      marginBottom: 20,
+      marginBottom: 8,
     },
     checkboxRow: {
       flexDirection: 'row',

@@ -3484,7 +3484,7 @@ expo-constants@~14.3.0:
 
 expo-document-picker@~11.2.2:
   version "11.2.2"
-  resolved "https://registry.yarnpkg.com/expo-document-picker/-/expo-document-picker-11.2.2.tgz#707ff994a1c0b38505e12b2c9fe6b67715e6f41c"
+  resolved "https://registry.npmjs.org/expo-document-picker/-/expo-document-picker-11.2.2.tgz"
   integrity sha512-EeonRKxkK9E20LEAh93IvlwFjNkUCJKnhBEama9PmIDYWW7RyANZ8eP9C2PupThTDbivzRDNp7Ec7dIeyDAWjw==
 
 expo-file-system@~15.2.2:
@@ -3517,12 +3517,12 @@ expo-font@~11.1.1:
 
 expo-image-loader@~4.1.0:
   version "4.1.1"
-  resolved "https://registry.yarnpkg.com/expo-image-loader/-/expo-image-loader-4.1.1.tgz#efadbb17de1861106864820194900f336dd641b6"
+  resolved "https://registry.npmjs.org/expo-image-loader/-/expo-image-loader-4.1.1.tgz"
   integrity sha512-ciEHVokU0f6w0eTxdRxLCio6tskMsjxWIoV92+/ZD37qePUJYMfEphPhu1sruyvMBNR8/j5iyOvPFVGTfO8oxA==
 
 expo-image-picker@~14.1.1:
   version "14.1.1"
-  resolved "https://registry.yarnpkg.com/expo-image-picker/-/expo-image-picker-14.1.1.tgz#181f1348ba6a43df7b87cee4a601d45c79b7c2d7"
+  resolved "https://registry.npmjs.org/expo-image-picker/-/expo-image-picker-14.1.1.tgz"
   integrity sha512-SvWtnkLW7jp5Ntvk3lVcRQmhFYja8psmiR7O6P/+7S6f4llt3vaFwb4I3+pUXqJxxpi7BHc2+95qOLf0SFOIag==
   dependencies:
     expo-image-loader "~4.1.0"
@@ -4069,6 +4069,11 @@ hasown@^2.0.2:
   integrity sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==
   dependencies:
     function-bind "^1.1.2"
+
+hermes-engine@^0.11.0:
+  version "0.11.0"
+  resolved "https://registry.yarnpkg.com/hermes-engine/-/hermes-engine-0.11.0.tgz#bb224730d230a02a5af02c4e090d1f52d57dd3db"
+  integrity sha512-7aMUlZja2IyLYAcZ69NBnwJAR5ZOYlSllj0oMpx08a8HzxHOys0eKCzfphrf6D0vX1JGO1QQvVsQKe6TkYherw==
 
 hermes-estree@0.29.1:
   version "0.29.1"
