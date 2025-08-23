@@ -21,7 +21,6 @@ import moment from "moment";
 import { Platform, Linking } from "react-native";
 import {ActivityIndicator} from "react-native";
 import FollowUpDateTimePicker from "../../Components/DateTimePicker";
-
 const InterestFollowUp = ({
   modal,
   setModal,
@@ -31,7 +30,6 @@ const InterestFollowUp = ({
   branchId,
   token,
   imageUrl,
-  serviceUrl,
   setUpload,
   setCheckIn,
   pickImage,
@@ -43,8 +41,146 @@ const InterestFollowUp = ({
   setSelectedCategories
 }) => {
   const [isUploading, setIsUploading] = React.useState(false);
+  const [localImages, setLocalImages] = React.useState({}); // Store local image URIs
   const isMounted = useRef(true);
   const [date, setDate] = useState(new Date());
+
+  const handleChooseImage = async (image, itemIndex = index) => {
+    console.log('handleChooseImage called with:', { image, itemIndex });
+    
+    if (!image || !image.uri) {
+      console.log('No valid image selected');
+      return;
+    }
+    
+    const currentIndex = typeof index === 'number' ? index : 0;
+    const itemIndexToUse = typeof itemIndex === 'number' ? itemIndex : currentIndex;
+    
+    console.log('Using index:', { currentIndex, itemIndexToUse });
+    
+    // Store local image URI immediately
+    setLocalImages(prev => ({
+      ...prev,
+      [itemIndexToUse]: image.uri
+    }));
+    
+    // Create a safe copy of the current payload
+    const updatedPayload = [...payloadData];
+    
+    // Ensure the item exists at the index
+    if (!updatedPayload[itemIndexToUse]) {
+      console.error('Invalid item index:', itemIndexToUse);
+      return;
+    }
+    
+    // Get the image key
+    const imageKey = `category_${updatedPayload[itemIndexToUse].category_id}_img`;
+    
+    // Update the payload with the new image
+    updatedPayload[itemIndexToUse] = {
+      ...updatedPayload[itemIndexToUse],
+      image_path: {
+        ...(updatedPayload[itemIndexToUse].image_path || {}),
+        localUri: image.uri,
+        isUploading: true,
+        uploadError: false,
+        lastUpdated: Date.now()
+      }
+    };
+    
+    setPayloadData(updatedPayload);
+    
+    // Prepare form data for upload
+    let response;
+    try {
+      console.log('Preparing form data...');
+      const formData = new FormData();
+      const filename = image.uri.split('/').pop();
+      const fileType = filename.split('.').pop();
+      const categoryId = updatedPayload[itemIndexToUse]?.category_id;
+      const fileName = `category-${categoryId}-${Date.now()}.${fileType || 'jpg'}`;
+      
+      console.log('Creating file object...');
+      const file = {
+        uri: image.uri,
+        type: `image/${fileType || 'jpeg'}`,
+        name: fileName
+      };
+      
+      console.log('Appending to form data...');
+      formData.append('images', file);
+      
+      console.log('Starting upload with:', {
+        url: 'upload',
+        file: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          uri: file.uri.substring(0, 50) + '...' // Log partial URI to avoid logging full base64
+        },
+        categoryId,
+        itemIndexToUse
+      });
+      
+      // Upload the image
+      console.log('Calling uploadImage...');
+      response = await uploadImage("upload", formData, token);
+      console.log('Upload response received:', response);
+      
+      if (!response || !response.fileNames || !Array.isArray(response.fileNames) || response.fileNames.length === 0) {
+        console.error('Invalid response format:', response);
+        throw new Error('Invalid response from server: ' + JSON.stringify(response));
+      }
+      
+      console.log('Upload successful, file names:', response.fileNames);
+      
+      // Update with server URL
+      const serverUrl = response.fileNames[0];
+      setPayloadData(prevPayload => {
+        const newPayload = [...prevPayload];
+        if (newPayload[itemIndexToUse]) {
+          newPayload[itemIndexToUse] = {
+            ...newPayload[itemIndexToUse],
+            image_path: {
+              ...(newPayload[itemIndexToUse].image_path || {}),
+              url: serverUrl,
+              [imageKey]: serverUrl, // Update the unique key with server URL
+              isUploading: false,
+              uploadError: false,
+              lastUpdated: Date.now() // Update timestamp
+            }
+          };
+        }
+        return newPayload;
+      });
+      
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      
+      // On error, ensure we keep the local image
+      setPayloadData(prevPayload => {
+        const newPayload = [...prevPayload];
+        if (newPayload[itemIndexToUse]) {
+          const imageKey = `category_${newPayload[itemIndexToUse].category_id}_img`;
+          newPayload[itemIndexToUse] = {
+            ...newPayload[itemIndexToUse],
+            image_path: {
+              ...(newPayload[itemIndexToUse].image_path || {}),
+              localUri: image.uri, // Keep local URI on error
+              isUploading: false,
+              uploadError: true
+            }
+          };
+        }
+        return newPayload;
+      });
+      
+      Alert.alert('Upload Failed', 'Could not upload image. Please try again.');
+    } finally {
+      if (isMounted.current) setIsUploading(false);
+    }
+  };
+
 
   const handleImageUpload = async (image, itemIndex = index, categoryType) => {
     if (!image || !image.uri) {
@@ -152,7 +288,7 @@ const InterestFollowUp = ({
         contentContainerStyle={{ maxHeight: 600 }}
         content={
           <View style={{ height: "100%" }}>
-            <View style={[MyStyles.row, {marginBottom:10, justifyContent:"space-between"}]}>
+                     <View style={[MyStyles.row, {marginBottom:10, justifyContent:"space-between"}]}>
                             <Text style={[MyStyles.headerText,{marginBottom:10, fontSize:16, fontWeight:"bold"}]}>Follow Up:</Text>
                             <FollowUpDateTimePicker
                                 value={date}
@@ -243,17 +379,7 @@ const InterestFollowUp = ({
                       });
 
                       if (!result.canceled && result.assets?.[0]) {
-                        setPayloadData((prev) => {
-                          const updated = [...prev];
-                          updated[index] = {
-                            ...updated[index],
-                            image_path: {
-                              ...updated[index].image_path,
-                              choose: result.assets[0].uri
-                            }
-                          };
-                          return updated;
-                        });
+                        await handleChooseImage(result.assets[0], index);
                       }
                     } catch (error) {
                       console.error('Error taking photo:', error);
@@ -274,17 +400,7 @@ const InterestFollowUp = ({
                       });
 
                       if (!result.canceled && result.assets?.[0]) {
-                        setPayloadData((prev) => {
-                          const updated = [...prev];
-                          updated[index] = {
-                            ...updated[index],
-                            image_path: {
-                              ...updated[index].image_path,
-                              choose: result.assets[0].uri
-                            }
-                          };
-                          return updated;
-                        });
+                        await handleChooseImage(result.assets[0], index);
                       }
                     } catch (error) {
                       console.error('Error picking file:', error);
@@ -309,19 +425,57 @@ const InterestFollowUp = ({
       </Button>
 
       {/* Main Image Preview */}
-        <Image
-          source={{
-          uri: `${payloadData[index]?.image_path?.choose
-            ? payloadData[index].image_path.choose
-            : payloadData[index]?.image_path?.url}`
-          }}
-          style={{
-            height: 130,
-            width: "100%",
-            marginVertical: 10,
-            resizeMode: "stretch",
-          }}
-        />
+        {(() => {
+          const categoryId = payloadData[index]?.category_id;
+          const imageKey = categoryId ? `category_${categoryId}_img` : null;
+          // Check for local image first, then fallback to server URL
+          const imagePath = payloadData[index]?.image_path || {};
+          const imageUri = imagePath.localUri || 
+                         (imageKey && imagePath[imageKey]) || 
+                         imagePath.url;
+          
+          if (!imageUri) {
+            return (
+              <View style={{
+                height: 130,
+                width: "100%",
+                marginVertical: 10,
+                backgroundColor: '#f5f5f5',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <Text>No image selected</Text>
+              </View>
+            );
+          }
+          
+          const sourceUri = imageUri.startsWith('http') || imageUri.startsWith('file://')
+            ? imageUri
+            : `${imageUrl}${imageUri}`;
+            
+          return (
+            <Image
+              source={{ uri: sourceUri }}
+              style={{
+                height: 130,
+                width: "100%",
+                marginVertical: 10,
+                resizeMode: "contain",
+                backgroundColor: '#f5f5f5'
+              }}
+              key={`${imageKey}_${payloadData[index]?.image_path?.lastUpdated || ''}`}
+              onError={(e) => {
+                console.log('Image load error:', e.nativeEvent.error);
+                // Fallback to choose if url fails
+                if (payloadData[index]?.image_path?.choose) {
+                  const updatedPayload = [...payloadData];
+                  updatedPayload[index].image_path[imageKey] = updatedPayload[index].image_path.choose;
+                  setPayloadData(updatedPayload);
+                }
+              }}
+            />
+          );
+        })()}
       
       {/* Additional Images */}
         <ScrollView
@@ -329,16 +483,24 @@ const InterestFollowUp = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
         >
-        {payloadData[index]?.image_path?.add?.map((imageData, idx) => {
-          // Use local URI if available, otherwise use server URL
-          const imageSource = { 
-            uri: imageData.localUri || 
-                 (imageData.startsWith('http') ? imageData : `${imageUrl}${imageData}`) 
-          };
-            
+        {Array.isArray(payloadData[index]?.image_path?.add) && payloadData[index].image_path.add.map((imageData, idx) => {
+          if (!imageData) return null;
+          
+          // Handle both old and new image data formats
+          const imageUri = imageData.uri || 
+                          imageData.localUri || 
+                          (typeof imageData === 'string' ? 
+                            (imageData.startsWith('http') || imageData.startsWith('file://') ? 
+                              imageData : `${imageUrl}${imageData}`) 
+                          : null);
+          
+          if (!imageUri) return null;
+          
+          const imageSource = { uri: imageUri };
+          
           return (
             <View
-              key={idx}
+              key={`${index}-${idx}`}
               style={{
                 marginRight: 10,
                 borderRadius: 8,
@@ -786,7 +948,7 @@ const InterestFollowUp = ({
                             remarks: item?.remarks || '',
                             sku: item?.sku || '',
                         image_path: image.serverUrl || image.localUri || image || '', // Prefer serverUrl, fallback to localUri
-                            appointment_date: date ? moment(date).format('YYYY-MM-DD HH:mm:ss') : '',
+                            appointment_date: item?.appointment_date || '',
                         payment: item?.payment || '',
                         sub_category: item?.sub_category || '',
                         interest: item?.interest || 'Yes',
