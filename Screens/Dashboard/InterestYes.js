@@ -20,6 +20,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from "moment";
 import { Platform, Linking } from "react-native";
 import {ActivityIndicator} from "react-native";
+import FollowUpDateTimePicker from "../../Components/DateTimePicker";
 const InterestYes = ({
   modal,
   setModal,
@@ -40,9 +41,13 @@ const InterestYes = ({
   setSelectedCategories
 }) => {
   const [isUploading, setIsUploading] = React.useState(false);
+  const [localImages, setLocalImages] = React.useState({}); // Store local image URIs
   const isMounted = useRef(true);
+  const [date, setDate] = useState(new Date());
 
   const handleChooseImage = async (image, itemIndex = index) => {
+    console.log('handleChooseImage called with:', { image, itemIndex });
+    
     if (!image || !image.uri) {
       console.log('No valid image selected');
       return;
@@ -51,49 +56,83 @@ const InterestYes = ({
     const currentIndex = typeof index === 'number' ? index : 0;
     const itemIndexToUse = typeof itemIndex === 'number' ? itemIndex : currentIndex;
     
-    try {
-      // Create a safe copy of the current payload
-      const updatedPayload = [...payloadData];
-      
-      // Ensure the item exists at the index
-      if (!updatedPayload[itemIndexToUse]) {
-        console.error('Invalid item index:', itemIndexToUse);
-        return;
+    console.log('Using index:', { currentIndex, itemIndexToUse });
+    
+    // Store local image URI immediately
+    setLocalImages(prev => ({
+      ...prev,
+      [itemIndexToUse]: image.uri
+    }));
+    
+    // Create a safe copy of the current payload
+    const updatedPayload = [...payloadData];
+    
+    // Ensure the item exists at the index
+    if (!updatedPayload[itemIndexToUse]) {
+      console.error('Invalid item index:', itemIndexToUse);
+      return;
+    }
+    
+    // Get the image key
+    const imageKey = `category_${updatedPayload[itemIndexToUse].category_id}_img`;
+    
+    // Update the payload with the new image
+    updatedPayload[itemIndexToUse] = {
+      ...updatedPayload[itemIndexToUse],
+      image_path: {
+        ...(updatedPayload[itemIndexToUse].image_path || {}),
+        localUri: image.uri,
+        isUploading: true,
+        uploadError: false,
+        lastUpdated: Date.now()
       }
+    };
+    
+    setPayloadData(updatedPayload);
+    
+    // Prepare form data for upload
+    let response;
+    try {
+      console.log('Preparing form data...');
+      const formData = new FormData();
+      const filename = image.uri.split('/').pop();
+      const fileType = filename.split('.').pop();
+      const categoryId = updatedPayload[itemIndexToUse]?.category_id;
+      const fileName = `category-${categoryId}-${Date.now()}.${fileType || 'jpg'}`;
       
-      // Create a unique key for this category's image
-      const imageKey = `category_${updatedPayload[itemIndexToUse].category_id}_img`;
-      
-      // Update UI with local image immediately
-      updatedPayload[itemIndexToUse] = {
-        ...updatedPayload[itemIndexToUse],
-        image_path: {
-          ...(updatedPayload[itemIndexToUse].image_path || {}),
-          url: image.uri,
-          [imageKey]: image.uri, // Store image with unique key
-          isUploading: true,
-          uploadError: false,
-          lastUpdated: Date.now() // Add timestamp to force re-render
-        }
+      console.log('Creating file object...');
+      const file = {
+        uri: image.uri,
+        type: `image/${fileType || 'jpeg'}`,
+        name: fileName
       };
       
-      setPayloadData(updatedPayload);
+      console.log('Appending to form data...');
+      formData.append('images', file);
       
-      // Prepare form data for upload
-      const formData = new FormData();
-      formData.append('images', {
-        uri: image.uri,
-        type: image.mimeType || 'image/jpeg',
-        name: `category-${updatedPayload[itemIndexToUse].category_id}-${Date.now()}.jpg`
+      console.log('Starting upload with:', {
+        url: 'upload',
+        file: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          uri: file.uri.substring(0, 50) + '...' // Log partial URI to avoid logging full base64
+        },
+        categoryId,
+        itemIndexToUse
       });
       
       // Upload the image
-      const response = await uploadImage("upload", formData, token);
-      console.log("Upload response:", response);
+      console.log('Calling uploadImage...');
+      response = await uploadImage("upload", formData, token);
+      console.log('Upload response received:', response);
       
       if (!response || !response.fileNames || !Array.isArray(response.fileNames) || response.fileNames.length === 0) {
-        throw new Error('Invalid response from server');
+        console.error('Invalid response format:', response);
+        throw new Error('Invalid response from server: ' + JSON.stringify(response));
       }
+      
+      console.log('Upload successful, file names:', response.fileNames);
       
       // Update with server URL
       const serverUrl = response.fileNames[0];
@@ -118,7 +157,7 @@ const InterestYes = ({
     } catch (error) {
       console.error('Error uploading image:', error);
       
-      // Update UI to show error state
+      // On error, ensure we keep the local image
       setPayloadData(prevPayload => {
         const newPayload = [...prevPayload];
         if (newPayload[itemIndexToUse]) {
@@ -127,7 +166,7 @@ const InterestYes = ({
             ...newPayload[itemIndexToUse],
             image_path: {
               ...(newPayload[itemIndexToUse].image_path || {}),
-              url: image.uri,
+              localUri: image.uri, // Keep local URI on error
               isUploading: false,
               uploadError: true
             }
@@ -258,7 +297,7 @@ const InterestYes = ({
                 >
                   <View style={[MyStyles.row, { flexWrap: 'nowrap', paddingHorizontal: 10 }]}>
                     {(payloadData || []).map((payload, index) => (
-                      <View key={index} style={{ width: 195, marginRight: 15, marginBottom: 20 }}>
+                      <View key={index} style={{ width: 175, marginRight: 15, marginBottom: 20 }}>
       <Text
         style={{
           backgroundColor: "#eee",
@@ -378,9 +417,11 @@ const InterestYes = ({
         {(() => {
           const categoryId = payloadData[index]?.category_id;
           const imageKey = categoryId ? `category_${categoryId}_img` : null;
-          const imageUri = imageKey && payloadData[index]?.image_path?.[imageKey] 
-            ? payloadData[index].image_path[imageKey]
-            : payloadData[index]?.image_path?.url;
+          // Check for local image first, then fallback to server URL
+          const imagePath = payloadData[index]?.image_path || {};
+          const imageUri = imagePath.localUri || 
+                         (imageKey && imagePath[imageKey]) || 
+                         imagePath.url;
           
           if (!imageUri) {
             return (
@@ -426,11 +467,17 @@ const InterestYes = ({
         })()}
       
       {/* Additional Images */}
+      <View style={{ height:120 }}>
+
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
-        >
+          showsHorizontalScrollIndicator={true}
+          nestedScrollEnabled={true}
+          scrollEnabled={true}
+          overflow="scroll"
+
+          contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingHorizontal: 10 }}
+          >
         {Array.isArray(payloadData[index]?.image_path?.add) && payloadData[index].image_path.add.map((imageData, idx) => {
           if (!imageData) return null;
           
@@ -452,7 +499,7 @@ const InterestYes = ({
               style={{
                 marginRight: 10,
                 borderRadius: 8,
-                overflow: "hidden",
+                overflow: "scroll",
                 borderWidth: 1,
                 borderColor: "#ccc",
                 position: "relative",
@@ -462,8 +509,8 @@ const InterestYes = ({
                 <Image
                   source={imageSource}
                   style={{
-                    height: 100,
-                    width: 100,
+                    height: 50,
+                    width: 50,
                     resizeMode: "cover",
                   }}
                   onError={(e) => {
@@ -542,7 +589,7 @@ const InterestYes = ({
               </View>
         )})}
         </ScrollView>
-
+      </View>
       {/* Add Images Button */}
       <View style={MyStyles.row}>
         <Button
@@ -895,7 +942,7 @@ const InterestYes = ({
                             full_name: item?.full_name || '',
                             remarks: item?.remarks || '',
                             sku: item?.sku || '',
-                        image_path: image.serverUrl || image.localUri || image || '', // Prefer serverUrl, fallback to localUri
+                        image_path: image.serverUrl  || image || '', // Prefer serverUrl, fallback to localUri
                             appointment_date: item?.appointment_date || '',
                         payment: item?.payment || '',
                         sub_category: item?.sub_category || '',

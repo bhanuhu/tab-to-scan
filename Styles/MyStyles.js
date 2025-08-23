@@ -12,7 +12,7 @@ const MyStyles = StyleSheet.create({
   },
 
   wrapper: {
-    marginVertical: 5,
+    marginVertical: 3,
   },
 
   centerAlign: {
@@ -50,7 +50,7 @@ const MyStyles = StyleSheet.create({
   title: { color: "#22356A", fontWeight: "bold", fontSize: 25 },
 
   text: {
-    fontSize: 18,
+    fontSize: 14,
     // fontFamily: "ElMessiri-bold"
   },
 

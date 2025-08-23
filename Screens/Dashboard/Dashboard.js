@@ -1288,9 +1288,8 @@ const Dashboard = (props) => {
                       />
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <ScrollView>
-                        <View style={[MyStyles.wrapper, { marginHorizontal: 5,border:1, borderColor:"black", borderWidth:1 ,alignItems:"center", justifyContent:"center",borderRadius:8}]}>
-                            <Text style={{ fontWeight: "bold" }}>Date</Text>
-                            <Text style={MyStyles.text}>{item.date ? item.date : "N/A"}</Text>
+                        <View style={[MyStyles.wrapper, { paddingVertical: 5,border:1, borderColor:"black", borderWidth:1 ,alignItems:"center", justifyContent:"center",borderRadius:8}]}>
+                            <Text style={{ fontWeight: "bold" }}>Date {item.date ? item.date : "N/A"}</Text>
                           </View>
                         <View style={MyStyles.wrapper}>
                             <Text style={{ fontWeight: "bold" }}>Product Category</Text>
