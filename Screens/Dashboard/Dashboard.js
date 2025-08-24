@@ -53,7 +53,9 @@ const Dashboard = (props) => {
   // const [category, setCategory] = useState({
   const [selectedCategories, setSelectedCategories] = useState({});
   const [payloadData, setPayloadData] = useState([]);
+  const [mobile,setMobile] = useState('');
   const [categoryImages, setCategoryImages] = useState({});
+  const [customerCategoryList, setCustomerCategoryList] = useState([]);
   const fetchCategoryImages = async (categoryId) => {
     try {
       const response = await postRequest('masters/product/category/web-browse/', { category_id: categoryId }, token);
@@ -101,7 +103,21 @@ const Dashboard = (props) => {
       console.error('Error fetching category images:', error);
     }
   };
-
+  useEffect(() => {
+    fetchCustomerCategoryList();
+  }, []);
+  const fetchCustomerCategoryList = async () => {
+    try {
+      const response = await postRequest('customervisit/CategoryList', { branch_id: branchId }, token);
+      console.log("Customer category list response:", response);
+      if (response?.data && Array.isArray(response.data)) {
+        console.log("Customer category list:", response.data);
+        setCustomerCategoryList(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching customer category list:', error);
+    }
+  };
   const toggleCategory = async (categoryId, categoryName) => {
     const isSelected = !selectedCategories[categoryId];
     
@@ -1664,7 +1680,24 @@ const Dashboard = (props) => {
                   compact
                   onPress={() => {
                     setModal({ ...modal, join: false });
-                    setJoin({});
+                    setJoin({customer_id: "0",
+                      branch_id: branchId,
+                  
+                      full_name: "",
+                      mobile: "",
+                      gender: "",
+                      dob: "",
+                      doa: "",
+                      address: "",
+                  
+                      ref_id: "",
+                      category_id: "",
+                      staff_id: "",
+                      area_id: "",
+                      profession: "",
+                  
+                      step1: true,});
+                      setMobile("");
                   }}
                 >
                   Close
@@ -1742,7 +1775,7 @@ const Dashboard = (props) => {
                     value={join.category_id}
                     ext_lbl="category_name"
                     ext_val="category_id"
-                    data={categoryList}
+                    data={customerCategoryList}
                     placeholder="Category"
                     style={{ backgroundColor: "rgba(0,0,0,0)", flex: 1 }}
                     onChange={(val) => setJoin({ ...join, category_id: val })}
@@ -1791,7 +1824,24 @@ const Dashboard = (props) => {
                   style={{ marginRight: "auto" }}
                   onPress={() => {
                     setModal({ ...modal, join: false });
-                    setJoin({});
+                    setJoin({customer_id: "0",
+                      branch_id: branchId,
+                  
+                      full_name: "",
+                      mobile: "",
+                      gender: "",
+                      dob: "",
+                      doa: "",
+                      address: "",
+                  
+                      ref_id: "",
+                      category_id: "",
+                      staff_id: "",
+                      area_id: "",
+                      profession: "",
+                  
+                      step1: true});
+                      setMobile("");
                   }}
                 >
                   Close
@@ -1816,9 +1866,28 @@ const Dashboard = (props) => {
                   onPress={() => {
                     postRequest("customervisit/insertNewCustomerVisit", join, token).then(
                       (resp) => {
+                        console.log("join resp----<>",resp);
+                        console.log("join resp----<>",join);
                         if (resp?.status == 200) {
                           setModal({ ...modal, join: false });
-                          setJoin({});
+                          setMobile("");
+                          setJoin({customer_id: "0",
+                            branch_id: branchId,
+                        
+                            full_name: "",
+                            mobile: "",
+                            gender: "",
+                            dob: "",
+                            doa: "",
+                            address: "",
+                        
+                            ref_id: "",
+                            category_id: "",
+                            staff_id: "",
+                            area_id: "",
+                            profession: "",
+                        
+                            step1: true});
                         }
                       }
                     );
@@ -1909,8 +1978,8 @@ const Dashboard = (props) => {
                 style={{ backgroundColor: "rgba(0,0,0,0)" }}
                 label="Enter Mobile No."
                 placeholder="eg:9876543210"
-                value={modal.mobile}
-                onChangeText={(text) => setModal({ ...modal, mobile: text })}
+                value={mobile}
+                onChangeText={(text) => {setMobile(text);setModal({ ...modal, mobile: mobile })}}
                 maxLength={10}
                 keyboardType="number-pad"
                 left={
@@ -1927,7 +1996,7 @@ const Dashboard = (props) => {
               {/* {recentVistors.map((item, index) => (
                 <List.Item
                   onPress={() => {
-                    setModal({ ...modal, mobile: item.mobile });
+                    setModal({ ...modal, mobile: mobile });
                   }}
                   key={index}
                   title={"+91 " + item.mobile}
@@ -1953,7 +2022,7 @@ const Dashboard = (props) => {
                     postRequest(
                       "customervisit/getCustomerVisit",
                       {
-                        mobile: modal.mobile,
+                        mobile: mobile,
                       },
                       token
                     ).then((resp) => {
@@ -1971,7 +2040,7 @@ const Dashboard = (props) => {
                             setTimeout(() => {
                               setModal({ ...modal, checkIn: false });
                               setCheckIn(null);
-                            }, 8000);
+                            }, 3000);
                           }
                         });
                       }

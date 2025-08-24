@@ -22,6 +22,7 @@ import { Platform, Linking } from "react-native";
 import {ActivityIndicator} from "react-native";
 import FollowUpDateTimePicker from "../../Components/DateTimePicker";
 import {FlatList} from "react-native";
+import { Directions } from "react-native-gesture-handler";
 const InterestYes = ({
   modal,
   setModal,
@@ -321,12 +322,11 @@ const InterestYes = ({
       <Button
         mode="contained"
         compact
-        style={{ flex: 1, marginBottom: 10 ,maxHeight: 40, height: 40}}
+        style={{ flex: 1, marginBottom: 10, maxHeight: 40, height: 40 }}
         buttonColor="#1abc9c"
         textColor="#fff"
         onPress={async () => {
           try {
-            // Check permissions first
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             
             if (status !== 'granted') {
@@ -350,17 +350,40 @@ const InterestYes = ({
               return;
             }
 
-            // Show action sheet for file source selection
+            // Show action sheet for camera or library
             Alert.alert(
-              'Select File Source',
-              'Choose how to add a file',
+              'Select Option',
+              'Choose an option to add an image',
               [
                 {
                   text: 'Take Photo',
                   onPress: async () => {
                     try {
+                      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                      
+                      if (status !== 'granted') {
+                        Alert.alert(
+                          'Permission Required',
+                          'Please allow access to your camera to take photos.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                              text: 'Open Settings', 
+                              onPress: () => {
+                                if (Platform.OS === 'ios') {
+                                  Linking.openURL('app-settings:');
+                                } else {
+                                  Linking.openSettings();
+                                }
+                              }
+                            }
+                          ]
+                        );
+                        return;
+                      }
+
                       const result = await ImagePicker.launchCameraAsync({
-                        mediaTypes: ImagePicker.MediaTypeOptions.All,
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: false,
                         aspect: [4, 3],
                         quality: 0.8,
@@ -382,7 +405,9 @@ const InterestYes = ({
                   onPress: async () => {
                     try {
                       const result = await ImagePicker.launchImageLibraryAsync({
-                        mediaTypes: ImagePicker.MediaTypeOptions.All,
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: false,
+                        aspect: [4, 3],
                         quality: 0.8,
                         base64: false,
                         exif: false,
@@ -393,8 +418,8 @@ const InterestYes = ({
                         await handleChooseImage(result.assets[0], index);
                       }
                     } catch (error) {
-                      console.error('Error picking file:', error);
-                      Alert.alert('Error', 'Failed to pick file');
+                      console.error('Error picking image:', error);
+                      Alert.alert('Error', 'Failed to pick image');
                     }
                   }
                 },
@@ -406,7 +431,7 @@ const InterestYes = ({
             );
           } catch (error) {
             console.error('Error in file selection:', error);
-            Alert.alert('Error', 'Failed to select file');
+            Alert.alert('Error', 'Failed to access media library. Please try again.');
           }
         }}
         disabled={isUploading}
@@ -469,15 +494,15 @@ const InterestYes = ({
       
       {/* Additional Images */}
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          nestedScrollEnabled={true}
-          scrollEnabled={true}
-          overflow="scroll"
-
-          contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingHorizontal: 0 }}
-          >
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-start',
+            padding: 5,
+            width: '100%',
+          }}
+        >
         {Array.isArray(payloadData[index]?.image_path?.add) && payloadData[index].image_path.add.map((imageData, idx) => {
           if (!imageData) return null;
           
@@ -497,98 +522,100 @@ const InterestYes = ({
             <View
               key={`${index}-${idx}`}
               style={{
-                marginRight: 10,
+                width: '31%',
+                margin: '1%',
+                aspectRatio: 1,
                 borderRadius: 8,
-                overflow: "scroll",
+                overflow: 'hidden',
                 borderWidth: 1,
-                borderColor: "#ccc",
-                position: "relative",
+                borderColor: '#ccc',
+                position: 'relative',
               }}
             >
               {imageSource.uri && !imageData.uploadError ? (
-              <Image
+                <Image
                   source={imageSource}
-                style={{
-                  height: 50,
-                  width: 50,
-                  resizeMode: "cover",
-                }}
-                onError={(e) => {
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    resizeMode: 'cover',
+                  }}
+                  onError={(e) => {
                     console.log('Error loading image:', e.nativeEvent.error, 'Source:', imageSource.uri);
-                  // Update the source to null to trigger the fallback UI
-                  const updatedPayload = [...payloadData];
-                  updatedPayload[index].image_path.add[idx] = null;
-                  setPayloadData(updatedPayload);
-                }}
-              />
-            ) : (
-              <View style={{
-                height: 100,
-                width: 100,
-                backgroundColor: imageData.uploadError ? '#ffebee' : '#f0f0f0',
-                justifyContent: 'center',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: imageData.uploadError ? '#f44336' : '#ddd',
-                borderRadius: 4,
-                position: 'relative'
-              }}>
-                {imageData.isUploading ? (
-                  <ActivityIndicator color="#1abc9c" />
-                ) : (
-                  <View style={{ alignItems: 'center' }}>
-                    <Text style={{ 
-                      color: imageData.uploadError ? '#f44336' : '#999', 
-                      textAlign: 'center',
-                      padding: 5
-                    }}>
-                      {imageData.uploadError ? 'Upload Failed' : 'Loading...'}
-                    </Text>
-                    {imageData.uploadError && (
-                      <Button
-                        mode="contained"
-                        compact
-                        onPress={() => handleImageUpload({ uri: imageData.localUri }, index, 'add', idx)}
-                        style={{
-                          backgroundColor: '#1abc9c',
-                          marginTop: 5,
-                          paddingHorizontal: 8,
-                          height: 24
-                        }}
-                        labelStyle={{ fontSize: 10 }}
-                      >
-                        Retry
-                      </Button>
-                    )}
-                  </View>
-                )}
+                    // Update the source to null to trigger the fallback UI
+                    const updatedPayload = [...payloadData];
+                    updatedPayload[index].image_path.add[idx] = null;
+                    setPayloadData(updatedPayload);
+                  }}
+                />
+              ) : (
+                <View style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: imageData.uploadError ? '#ffebee' : '#f0f0f0',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: imageData.uploadError ? '#f44336' : '#ddd',
+                  borderRadius: 4,
+                  position: 'relative'
+                }}>
+                  {imageData.isUploading ? (
+                    <ActivityIndicator color="#1abc9c" />
+                  ) : (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ 
+                        color: imageData.uploadError ? '#f44336' : '#999', 
+                        textAlign: 'center',
+                        padding: 5
+                      }}>
+                        {imageData.uploadError ? 'Upload Failed' : 'Loading...'}
+                      </Text>
+                      {imageData.uploadError && (
+                        <Button
+                          mode="contained"
+                          compact
+                          onPress={() => handleImageUpload({ uri: imageData.localUri }, index, 'add', idx)}
+                          style={{
+                            backgroundColor: '#1abc9c',
+                            marginTop: 5,
+                            paddingHorizontal: 8,
+                            height: 24
+                          }}
+                          labelStyle={{ fontSize: 10 }}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+                <TouchableOpacity
+                  onPress={() => {
+                    // Remove image from payloadData.image_path.add
+                    const updatedPayload = [...payloadData];
+                    updatedPayload[index].image_path.add = updatedPayload[index].image_path.add.filter((_, i) => i !== idx);
+                    setPayloadData(updatedPayload);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 5,
+                    right: 5,
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    borderRadius: 12,
+                    width: 24,
+                    height: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1,
+                  }}
+                >
+                  <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
+                </TouchableOpacity>
               </View>
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                // Remove image from payloadData.image_path.add
-                const updatedPayload = [...payloadData];
-                updatedPayload[index].image_path.add = updatedPayload[index].image_path.add.filter((_, i) => i !== idx);
-                setPayloadData(updatedPayload);
-              }}
-              style={{
-                position: "absolute",
-                top: 5,
-                right: 5,
-                backgroundColor: "rgba(0,0,0,0.6)",
-                borderRadius: 12,
-                width: 24,
-                height: 24,
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1,
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 16, lineHeight: 20 }}>×</Text>
-            </TouchableOpacity>
-          </View>
         )})}
-        </ScrollView>
+        </View>
       {/* Add Images Button */}
       <View style={MyStyles.row}>
         <Button
@@ -849,9 +876,9 @@ const InterestYes = ({
   label="Payment"
   style={{ backgroundColor: "#fff", marginBottom: 10 }}
   value={payload.payment}
-  keyboardType="numeric" // 
+  keyboardType="numeric" // 👈 ensures numeric keyboard on mobile
   onChangeText={(text) => {
-    const numericText = text.replace(/[^0-9]/g, ''); // 
+    const numericText = text.replace(/[^0-9]/g, ''); // 👈 strips non-numeric characters
     setPayloadData((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], payment: numericText };
