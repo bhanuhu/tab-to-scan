@@ -297,7 +297,7 @@ const InterestYes = ({
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 10 }}
                 >
-                  <View style={[MyStyles.row, { flexWrap: 'nowrap', paddingHorizontal: 10 }]}>
+                  <View style={[MyStyles.row, { flexWrap: 'nowrap', paddingHorizontal: 10,flex: 1 }]}>
                     {(payloadData || []).map((payload, index) => (
                       <View key={index} style={{ width: 175, marginRight: 15, marginBottom: 20 }}>
       <Text
@@ -928,6 +928,8 @@ const InterestYes = ({
               </Button>
               <Button mode="contained" onPress={() => {
                 setModal({ ...modal, upload: true, uploadNext: false, checkIn: false })
+                setPayloadData([]);
+                setSelectedCategories({});
                 ;
               }} compact style={{...MyStyles.button, backgroundColor: '#3699fe'}}>
                 BACK

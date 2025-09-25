@@ -950,6 +950,10 @@ const Dashboard = (props) => {
                   uppercase={false}
                   compact
                   onPress={() => {
+                    if (modal.mobile.length !== 10) {
+                      Alert.alert('Error', 'Mobile number should be of 10 digits');
+                      return;
+                    }
                     postRequest(
                       "customervisit/getCustomerDetails",
                       {
@@ -1530,6 +1534,10 @@ const Dashboard = (props) => {
                   uppercase={false}
                   compact
                   onPress={() => {
+                    if (modal.mobile.length !== 10) {
+                      Alert.alert('Error', 'Mobile number should be of 10 digits');
+                      return;
+                    }
                     postRequest(
                       "customervisit/getCustomerVisit",
                       { mobile: modal.mobile },
@@ -1981,6 +1989,7 @@ const Dashboard = (props) => {
                 value={mobile}
                 onChangeText={(text) => {setMobile(text);setModal({ ...modal, mobile: mobile })}}
                 maxLength={10}
+                minLength={10}
                 keyboardType="number-pad"
                 left={
                   <TextInput.Icon
@@ -2019,6 +2028,10 @@ const Dashboard = (props) => {
                   uppercase={false}
                   compact
                   onPress={() => {
+                    if (mobile.length != 10) {
+                      Alert.alert("Error", "Mobile number must be 10 digits");
+                      return;
+                    }
                     postRequest(
                       "customervisit/getCustomerVisit",
                       {
@@ -2223,6 +2236,10 @@ const Dashboard = (props) => {
                   uppercase={false}
                   compact
                   onPress={() => {
+                    if (modal.mobile.length != 10) {
+                      Alert.alert("Error", "Mobile number must be 10 digits");
+                      return;
+                    }
                     postRequest(
                       "customervisit/getCustomerVisit",
                       {

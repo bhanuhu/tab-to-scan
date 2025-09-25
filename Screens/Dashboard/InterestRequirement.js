@@ -133,6 +133,8 @@ const InterestRequirement = ({
               </Button>
               <Button mode="contained" onPress={() => {
                 setModal({ ...modal, upload: true, uploadNext: false, checkIn: false });
+                setPayloadData([]);
+                setSelectedCategories({});
               }} color="#007BFF" compact style={MyStyles.button}>
                 BACK
               </Button>

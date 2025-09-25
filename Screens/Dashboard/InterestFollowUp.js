@@ -907,6 +907,8 @@ const InterestFollowUp = ({
               </Button>
               <Button mode="contained" onPress={() => {
                 setModal({ ...modal, upload: true, uploadNext: false, checkIn: false })
+                setPayloadData([]);
+                setSelectedCategories({});
                 ;
               }} compact style={{...MyStyles.button, backgroundColor: '#3699fe'}}>
                 BACK
